@@ -1,0 +1,9 @@
+pandas==3.0.5
+numpy==2.5.2
+matplotlib==3.11.1
+seaborn==0.13.2
+SQLAlchemy==2.0.52
+mysql-connector-python==26.7.0
+python-dotenv==1.2.3
+jupyter==1.1.1
+ipykernel==7.3.0

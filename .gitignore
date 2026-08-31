@@ -1,0 +1,31 @@
+# Environment / secrets
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# Normalized/derived data (regenerable via data/normalize_data.py).
+# The raw source dataset (data/insurance_claims.csv) IS tracked.
+data/policies.csv
+data/vehicles.csv
+data/incidents.csv
+data/claims.csv
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Jupyter
+*.nbconvert.ipynb
+
+# Charts are committed intentionally (recruiter-facing); do not ignore charts/
