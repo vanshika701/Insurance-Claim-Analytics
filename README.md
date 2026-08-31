@@ -1,112 +1,224 @@
-# Project Brief: Insurance Claims Analytics (SQL + Python)
+# Insurance Claims Analytics — SQL + Python
 
-## Context
-I'm a Computer Science student preparing for a placement interview for the **Business Technology Solutions Associate** role at **ZS Associates**. The role's primary requirements are **SQL** and **Python**. I need a small, complete, resume-ready project built tonight that demonstrates strong SQL query-writing skills (joins, window functions, CTEs, subqueries) and Python-based data analysis (pandas, matplotlib/seaborn).
+Normalizing a real-world auto-insurance dataset into a relational schema, then using
+**SQL (window functions, CTEs, subqueries)** and **Python (pandas, matplotlib/seaborn)**
+to find where claims fraud actually concentrates — and, just as importantly, where the
+"obvious" red flags turn out to be dead ends.
 
-## Project Overview
-Build an **Insurance Claims Analytics** project using a **real-world dataset**: the "Auto Insurance Claims Data" dataset from Kaggle (39 columns, 1,000 rows, includes a real `fraud_reported` label). Load it into MySQL, analyze it with business-relevant SQL queries, and visualize it with Python. The goal is to simulate how an analyst would investigate claim patterns and fraud risk for an insurance company.
+The dataset ships with a ground-truth `fraud_reported` label, so every claim in this
+analysis can be checked against reality.
 
-**Dataset source:** https://www.kaggle.com/datasets/buntyshah/auto-insurance-claims-data
-File name: `insurance_claims.csv`
+---
 
-**Note:** This is a single flat table (not pre-split into normalized relational tables). Part of this project is to properly **normalize it into a relational schema** (separate customers, policies, incidents, claims tables) as a data modeling exercise before running the analysis — this is itself a good thing to be able to explain in an interview ("I normalized a flat dataset into a relational schema").
+## Problem statement
 
-## Tech Stack
-- **Database:** MySQL (assume a local MySQL server is running; use `mysql-connector-python` or `sqlalchemy` with the `mysql+mysqlconnector` dialect to connect)
-- **Python:** pandas, numpy, matplotlib, seaborn, faker (for synthetic data), mysql-connector-python / sqlalchemy
-- **Output:** Jupyter notebook or well-commented .py scripts, plus a polished README.md
+Insurance carriers lose a large share of claims spend to fraud, but investigator capacity
+is limited. The analytical question is a triage question: **given a new claim, which
+attributes tell us it is worth a closer look?** This project works through incident
+characteristics, claim economics, customer demographics, geography, seasonality, and
+vehicle type to see which of them carry a real fraud signal on this book of business.
 
-**Note for Claude Code:** Before running any DB code, check if MySQL is installed and running locally (`mysql --version`, `mysql.server status` or `service mysql status` depending on OS). If it's not installed, install it first (or guide me through installing it) and create a dedicated database (e.g. `CREATE DATABASE insurance_claims;`) and user before proceeding. Ask me for MySQL root/user credentials if needed rather than assuming defaults.
+## Dataset
 
-## Folder Structure to Create
+- **Source:** [Auto Insurance Claims Data](https://www.kaggle.com/datasets/buntyshah/auto-insurance-claims-data) (Kaggle, uploaded by Bunty Shah)
+- **Shape:** 1,000 claims × 39 columns, one flat table; incidents span Jan–Mar 2015
+- **Label:** `fraud_reported` (Y/N) — 24.7% of claims are fraudulent (this is a curated
+  teaching dataset, so the base rate is far above a real portfolio's ~1–2%; treat the
+  numbers below as *relative* comparisons)
+- **Normalization:** the flat CSV was cleaned (`"?"` placeholders → NULL, a negative
+  `umbrella_limit` → NULL, junk trailing column dropped) and split into **4 related tables**.
+
+### Schema
+
 ```
-insurance-claims-analytics/
-├── data/
-│   └── insurance_claims.csv    # Downloaded from Kaggle (manual download, place here)
-│   └── normalize_data.py       # Splits flat CSV into normalized tables (customers, policies, incidents, claims)
-├── db/
-│   └── schema.sql              # CREATE TABLE statements
-│   └── connection.py           # MySQL connection helper (reads credentials from .env)
-├── queries/
-│   └── analysis_queries.sql    # All 10+ SQL queries, commented
-├── analysis/
-│   └── analysis.ipynb          # Python analysis + charts
-├── charts/
-│   └── (exported PNGs of key charts)
-├── README.md
-└── requirements.txt
+policies                         vehicles
+--------                         --------
+policy_number  (PK) ────────1:1──< policy_number (FK)
+months_as_customer, age            auto_make, auto_model, auto_year
+policy_bind_date, policy_state
+policy_csl, policy_deductable        incidents
+policy_annual_premium, umbrella…     ---------
+insured_sex/education/occupation ─1:1─< policy_number (FK)
+insured_hobbies/relationship          incident_date, incident_type
+capital_gains, capital_loss           collision_type, incident_severity
+                                      authorities_contacted, incident_city/state
+claims                                incident_hour_of_the_day, witnesses
+------                                number_of_vehicles_involved
+claim_id (PK)                         property_damage, police_report_available
+policy_number (FK) ──────────┐        bodily_injuries
+incident_id   (FK) ─1:1──────┴──────< incident_id (PK)
+total_claim_amount
+injury_claim / property_claim / vehicle_claim
+fraud_reported
 ```
 
-## Step-by-Step TODO
+| Table | Rows | Grain |
+|---|---|---|
+| `policies` | 1,000 | one insured party + policy terms |
+| `vehicles` | 1,000 | one insured vehicle |
+| `incidents` | 1,000 | one reported event |
+| `claims` | 1,000 | one claim + fraud label |
 
-### 1. Download the Dataset & Design the Schema
-Download `insurance_claims.csv` manually from https://www.kaggle.com/datasets/buntyshah/auto-insurance-claims-data (requires a free Kaggle login) and place it in `data/`.
+Relationships are 1:1 in this dataset but modeled as 1:many to mirror a real carrier's system.
+Full DDL: [`db/schema.sql`](db/schema.sql).
 
-The raw CSV is one flat table (~39 columns). **Normalize it into these related tables** (primary/foreign keys, NOT NULL constraints, sensible data types) — this normalization step is itself something to be able to explain in an interview:
+---
 
-- **policies**: policy_number (PK), policy_bind_date, policy_state, policy_csl, policy_deductable, policy_annual_premium, umbrella_limit, insured_zip, insured_sex, insured_education_level, insured_occupation, insured_hobbies, insured_relationship, capital_gains, capital_loss, months_as_customer, age
-- **vehicles**: vehicle_id (PK, generate a surrogate key), policy_number (FK), auto_make, auto_model, auto_year
-- **incidents**: incident_id (PK, generate a surrogate key), policy_number (FK), incident_date, incident_type, collision_type, incident_severity, authorities_contacted, incident_state, incident_city, incident_location, incident_hour_of_the_day, number_of_vehicles_involved, property_damage, bodily_injuries, witnesses, police_report_available
-- **claims**: claim_id (PK, generate a surrogate key), policy_number (FK), incident_id (FK), total_claim_amount, injury_claim, property_claim, vehicle_claim, fraud_reported
+## Sample queries
 
-Note: column names in the raw CSV use hyphens (e.g. `capital-gains`) — rename to underscores during cleaning. Drop the trailing empty/junk column (`_c39`) if present.
+All 10 queries are in [`queries/analysis_queries.sql`](queries/analysis_queries.sql), each
+commented with the business question it answers. Run them all with
+`python queries/run_queries.py`.
 
-### 2. Clean & Normalize the Data (data/normalize_data.py)
-Write a Python script (pandas) that:
-- Loads `insurance_claims.csv`
-- Cleans column names (hyphens → underscores, lowercase), drops any empty/junk trailing column
-- Handles missing/placeholder values (this dataset uses `"?"` for some missing values, e.g. in `collision_type`, `property_damage`, `police_report_available` — replace with NULL/NaN, don't silently drop rows)
-- Splits the flat table into the four normalized dataframes (policies, vehicles, incidents, claims) described above, generating surrogate keys (`vehicle_id`, `incident_id`, `claim_id`) since the raw data doesn't have them
-- Exports each normalized table to its own CSV in `data/` (or loads directly into MySQL — see step 3)
+**Q1 — Fraud rate by incident severity × type** (`DENSE_RANK` window, conditional aggregation)
 
-This cleaning/normalization step is genuinely good interview material: "the raw dataset had placeholder nulls and no relational structure, so I cleaned it and normalized it into 4 related tables before analysis."
+```
+incident_severity   incident_type              claims  fraud_rate_pct  rank
+Major Damage         Single Vehicle Collision      132           62.9     1
+Major Damage         Multi-vehicle Collision       144           58.3     2
+Total Loss           Multi-vehicle Collision       145           13.1     3
+Minor Damage         Single Vehicle Collision      136           12.5     5
+Trivial Damage       Vehicle Theft                  48            6.3    10
+```
 
-### 3. Load Data into MySQL
-Load the generated CSVs/dataframes into the `insurance_claims` MySQL database using `sqlalchemy` (with `mysql+mysqlconnector` dialect) or `mysql-connector-python`, applying the schema from `schema.sql`. Store DB credentials in a `.env` file (never hardcode them), and add `.env` to `.gitignore`. Verify row counts and foreign key integrity after loading.
+**Q4 — Do fraudulent claims cost more? (fraud vs legit, same severity)** (conditional aggregation)
 
-### 4. Write These SQL Queries (queries/analysis_queries.sql)
-Each query should be commented with what business question it answers. Use **window functions, CTEs, and subqueries** — not just basic joins — since query depth is what will be evaluated.
+```
+incident_severity   claims  avg_amount_fraud  avg_amount_legit  gap
+Total Loss             280           64,041           61,792   +2,249
+Major Damage           276           64,116           63,993     +123
+Minor Damage           354           48,726           48,633      +93
+Trivial Damage          90            5,038            5,320     −282
+```
 
-1. **Fraud rate by incident severity and type** — % of claims flagged fraud_reported='Y', grouped and ranked (RANK/DENSE_RANK)
-2. **Fraud rate by age bracket and education level** — bucket `age` into ranges (CASE WHEN) and compare fraud rate across buckets (CTE)
-3. **Claims filed close to policy bind date** — join policies + incidents, compute days between policy_bind_date and incident_date, flag claims filed unusually early (subquery for average threshold per policy_state)
-4. **Average total_claim_amount by incident_severity**, with the fraud vs non-fraud split shown side by side (conditional aggregation)
-5. **Top 10% highest total_claim_amount claims** — using NTILE or PERCENT_RANK window function
-6. **State/region-level fraud comparison** — fraud rate and average claim amount by policy_state, ranked (window function)
-7. **Claim cost breakdown** — injury_claim vs property_claim vs vehicle_claim as % of total_claim_amount, by incident_type
-8. **Monthly/seasonal incident trend** — incident_date grouped by month, count and average claim amount (date functions + GROUP BY)
-9. **Vehicle-level fraud pattern** — fraud rate by auto_make/auto_model, using join to vehicles table, filtered with HAVING for makes with enough sample size
-10. **Running cumulative claim cost over time** — SUM() OVER ordered by incident_date, to show cost accumulation trend
+**Q5 — Is fraud concentrated in the most expensive claims?** (`NTILE(10)` + running share)
 
-### 5. Python Analysis Layer (analysis/analysis.ipynb)
-Pull query results into pandas and produce:
-- Bar chart: fraud rate by incident_severity and incident_type
-- Bar chart: fraud rate by policy_state (regional comparison)
-- Scatter/box plot: total_claim_amount distribution, fraud vs non-fraud
-- Bar chart: fraud rate by age bracket
-- One simple anomaly detection pass on total_claim_amount using z-score (flag anything > 3 standard deviations from the mean per incident_severity) and compare how well this lines up with the real fraud_reported label — this is a nice touch since you can actually check your anomaly flag against ground truth, which most student projects can't do
+```
+amount_decile  amount_range        claims  fraud_rate_pct  pct_of_all_fraud_from_here_up
+          10   $81,400–$114,920       100           28.0           11.3
+           8   $68,040–$74,360        100           37.0           37.7
+           5   $53,280–$57,970        100           30.0           71.7
+           2   $5,760–$32,800         100            8.0           95.5
+           1   $100–$5,720            100           11.0          100.0
+```
 
-### 6. README.md
-Write a clean, recruiter-skimmable README with:
-- One-paragraph problem statement ("Insurance companies need to monitor claims for fraud risk across regions, incident types, and demographics...")
-- Note on the dataset: real Kaggle auto insurance claims data (39 columns, 1,000 records, with ground-truth fraud labels), and a sentence on how it was normalized from one flat table into 4 relational tables
-- Simple schema diagram (can be plain text/ASCII or a markdown table of tables + relationships)
-- 3-4 sample queries with a snippet of their output
-- Key insights section (e.g. "Claims filed within X days of policy start had a Y% higher fraud rate", "State Z showed the highest fraud rate at N%")
-- Tech stack section
-- How to run instructions (including the manual Kaggle download step, since the CSV can't be auto-downloaded without API credentials)
-- Attribution line crediting the dataset source and Kaggle uploader (Bunty Shah)
+**Q10 — Running cumulative claim cost** (`SUM() OVER (ORDER BY …)` + ratio to grand total)
 
-### 7. Git
-Initialize a git repo, write a sensible `.gitignore` (exclude `.env` and any credentials, `__pycache__`, `.ipynb_checkpoints`), and make clean incremental commits (data generation → schema → queries → analysis → README) rather than one giant commit, so the commit history itself looks intentional. Also add a `.env.example` file showing the required variables (without real values) so anyone cloning the repo knows what to set up.
+```
+incident_date  day_claim_amount  running_total   pct_of_period_total
+2015-01-01            867,820        867,820             1.6
+2015-02-01            996,520     28,757,490            54.5
+2015-03-01            674,720     52,761,940           100.0
+```
 
-## Resume Bullet (for reference — don't need to generate this, just keep the project aligned with it)
-"Normalized a real-world auto insurance claims dataset (1,000+ records) into a 4-table relational schema in MySQL; wrote 10+ analytical SQL queries (window functions, CTEs) with Python-based analysis to identify fraud-risk patterns across regions, incident types, and demographics."
+---
 
-## Important Setup Note for Claude Code
-The dataset requires a Kaggle login to download and can't be fetched via a direct anonymous URL. **Do not attempt to auto-download it.** Instead, tell me (the user) to manually download `insurance_claims.csv` from https://www.kaggle.com/datasets/buntyshah/auto-insurance-claims-data and place it in `data/`, then wait for confirmation before proceeding with the normalization script. If Kaggle API credentials (`kaggle.json`) are already configured on this machine, the `kaggle datasets download` CLI can be used instead — check for that first.
+## Key insights
 
-## Constraints
-- Keep it runnable end-to-end in under an hour of setup for anyone reviewing it
-- Prioritize query quality and README clarity over volume of code
-- No need for a web frontend or dashboard — this is a data analysis project, not an app
+Full write-up with recommended actions and caveats: [`ANALYSIS.md`](ANALYSIS.md).
+
+1. **Incident severity is almost the entire fraud signal.** "Major Damage" collisions run
+   **58–63% fraud** vs 6–13% for every other severity/type combination. 28% of claims
+   (the Major Damage pool) contain **68% of all fraud**. A single "route all Major Damage
+   to SIU" rule gets 61% precision / 68% recall.
+2. **Fraud is not inflated in dollars.** Holding severity fixed, fraudulent and honest
+   claims average within **~$120** of each other. The fraud is in fabricating/exaggerating
+   the *incident*, not padding the invoice — so detection belongs at incident validation,
+   not claim-amount review.
+3. **Screening by claim size barely helps.** Fraud rate is flat (~27–37%) across the top
+   8 cost deciles; only the cheapest 20% of claims are low-risk.
+4. **Vehicle make has a real ~18-point gradient** (Mercedes 33.9% → Jeep 16.4%), but it is
+   almost certainly confounded with owner profile — usable as a model feature, not a rule.
+5. **Honest negatives:** policy age, `policy_state`, age/education demographics, and month
+   show **little or no usable signal** on this book. Worth stating in an interview: "I
+   checked these and they weren't there."
+6. **A textbook z-score anomaly detector fails here.** Flagging claims with `|z| > 3` on
+   amount (per severity) catches **0.4% of fraud at ~base-rate precision** — a direct
+   consequence of insight #2, and a demonstration of why unsupervised cost-outlier
+   detection is the wrong tool for this problem.
+7. **Two data-quality bugs found:** one incident dated before its policy's bind date; one
+   negative `umbrella_limit`. Both isolated; ingestion validation recommended.
+
+### Charts
+
+Exported to [`charts/`](charts/) by the notebook:
+
+| | |
+|---|---|
+| ![Fraud by severity and type](charts/01_fraud_by_severity_type.png) | ![Claim amount fraud vs legit](charts/03_claim_amount_fraud_vs_legit.png) |
+| ![Fraud by vehicle make](charts/05_fraud_by_make.png) | ![Z-score anomaly vs fraud](charts/07_zscore_anomaly_vs_fraud.png) |
+
+---
+
+## Tech stack
+
+| Layer | Tools |
+|---|---|
+| Database | MySQL 8+ (tested on 9.2) |
+| Data prep | Python, pandas, numpy |
+| DB access | SQLAlchemy + `mysql-connector-python`, credentials via `python-dotenv` |
+| Analysis | Jupyter, pandas, matplotlib, seaborn |
+| Queries | 10 commented SQL queries — CTEs, `RANK`/`DENSE_RANK`, `NTILE`, `PERCENT_RANK`, `LAG`, `SUM() OVER`, correlated subqueries, conditional aggregation |
+
+---
+
+## How to run
+
+**Prerequisites:** MySQL running locally, Python 3.11+.
+
+```bash
+# 1. Get the data
+#    Download insurance_claims.csv from
+#    https://www.kaggle.com/datasets/buntyshah/auto-insurance-claims-data
+#    and place it at data/insurance_claims.csv
+
+# 2. Python environment
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# 3. Database + credentials
+mysql -u root -e "CREATE DATABASE insurance_claims;
+                  CREATE USER 'insurance_app'@'localhost' IDENTIFIED BY 'choose_a_password';
+                  GRANT ALL PRIVILEGES ON insurance_claims.* TO 'insurance_app'@'localhost';"
+cp .env.example .env          # then edit .env with your DB_PASSWORD
+
+# 4. Clean, normalize, and load (applies db/schema.sql, verifies row counts + FKs)
+python data/normalize_data.py
+#   add --no-db to only write the normalized CSVs
+
+# 5. Run the SQL analysis (prints every query's result as a table)
+python queries/run_queries.py
+#   or a subset:  python queries/run_queries.py 1 4 5
+
+# 6. Charts + anomaly detection
+jupyter notebook analysis/analysis.ipynb
+```
+
+---
+
+## Repository layout
+
+```
+data/
+  insurance_claims.csv      raw Kaggle dataset (tracked)
+  normalize_data.py         clean + split into 4 tables + load MySQL
+db/
+  schema.sql                CREATE TABLE DDL
+  connection.py             SQLAlchemy engine from .env
+queries/
+  analysis_queries.sql      the 10 analytical queries
+  run_queries.py            execute + pretty-print each result
+analysis/
+  analysis.ipynb            pandas analysis, 7 charts, z-score anomaly pass
+charts/                     exported PNGs
+ANALYSIS.md                 business findings (F1–F8), analyst voice
+EXPLANATION.md              build journal: decisions, difficulties, insights per step
+```
+
+---
+
+## Attribution
+
+Dataset: **"Auto Insurance Claims Data"** by **Bunty Shah** on Kaggle —
+<https://www.kaggle.com/datasets/buntyshah/auto-insurance-claims-data>. Used here for
+educational, non-commercial analysis.

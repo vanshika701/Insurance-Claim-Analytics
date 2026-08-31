@@ -179,3 +179,37 @@ mix, seasonality, vehicle make, and cumulative claim cost.
 **Next step**
 - Rewrite `README.md` from a brief into the real recruiter-facing README (problem statement,
   schema diagram, sample queries + output, key insights, how-to-run, dataset attribution).
+
+---
+
+## 2026-08-31 — README rewrite + git history
+
+**What we are building**
+The final deliverable polish: turning the project brief into a recruiter-facing `README.md`
+and laying down an intentional, incremental commit history.
+
+**Done this step**
+- `README.md` rewritten: problem statement, dataset + normalization note, ASCII schema
+  diagram + grain table, 4 sample queries with real output snippets, 7 numbered key
+  insights (including the honest negatives and the failed z-score detector), 4 embedded
+  charts, tech stack, step-by-step run instructions, repo layout, dataset attribution.
+- All output numbers in the README cross-checked against actual query results.
+
+**Insights found**
+- Writing the README surfaced the project's real narrative: *one feature (incident
+  severity) does almost all the work, and several intuitive features do none* — which is a
+  more interesting story than "found some fraud patterns."
+
+**Difficulties faced**
+- None of substance. Kept the schema diagram as ASCII so it renders anywhere on GitHub
+  without an image dependency.
+
+**Decisions made**
+- Commit history split into 5 logical commits (setup → schema/normalize/load → SQL →
+  notebook/charts → README + journals) rather than one dump, so `git log` reads as a
+  deliberate build.
+- No GitHub remote added automatically — left for the user to create and push.
+
+**Next step**
+- Project complete. Optional follow-ups: a lightweight fraud-scoring model on incident
+  features; wiring `run_queries.py` output into the README automatically.
