@@ -83,3 +83,54 @@ Taking the real Kaggle "Auto Insurance Claims" dataset (`data/insurance_claims.c
 **Next step**
 - Write `queries/analysis_queries.sql` — the 10 analytical queries (window functions,
   CTEs, subqueries) listed in the brief.
+
+---
+
+## 2026-08-31 — SQL analysis layer (10 queries)
+
+**What we are analysing**
+Ten business questions against the normalized schema, aimed at where fraud concentrates
+and where it doesn't: severity/type, demographics, policy age, claim size, state, cost
+mix, seasonality, vehicle make, and cumulative claim cost.
+
+**Done this step**
+- `queries/analysis_queries.sql` — 10 commented queries. Techniques used: CTEs (Q1–Q3, Q5,
+  Q6, Q8, Q10), window functions `DENSE_RANK`/`RANK` (Q1, Q6), `NTILE` + `PERCENT_RANK`
+  (Q5), `LAG` (Q8), `SUM() OVER` running totals + ratio-to-total (Q9, Q10), correlated
+  subquery / scalar subquery (Q2, Q3), conditional ("pivot") aggregation (Q1, Q4), `HAVING`
+  sample-size floors (Q1, Q2, Q9).
+- `queries/run_queries.py` — splits the .sql file and prints every result as a table so a
+  reviewer without a SQL client can see outputs. Supports `run_queries.py 3 6` to pick queries.
+- Business findings written up as F1–F7 in [ANALYSIS.md](ANALYSIS.md).
+
+**Insights found** (full detail in ANALYSIS.md)
+- **Severity is almost the whole story.** "Major Damage" collisions run 58–63% fraud;
+  everything else 6–13%. 28% of claims hold 68% of fraud.
+- **Fraud is not inflated in dollars.** At equal severity, fraudulent and honest claims
+  average within ~$120 of each other (Major/Minor). The fraud is in the incident, not the invoice.
+- **Claim size is a weak filter.** Fraud rate is ~flat across the top 8 cost deciles.
+- **Vehicle make has a real ~18-point gradient** (Mercedes 34% → Jeep 16%), likely confounded.
+- **Weak/no signal:** policy age, state, demographics, seasonality — honest negative results.
+- Cost mix (Q7) is remarkably uniform: `vehicle_claim` ≈ 72% of every claim regardless of type.
+
+**Difficulties faced**
+- First cut of Q3 used a per-state threshold of `0.5 × AVG(days_to_incident)`. Because
+  `policy_bind_date` goes back to 1990 while all incidents are in early 2015, the average
+  gap is ~3 years, so the "early" filter matched ~240 claims — useless. Reworked Q3 into
+  fixed calendar buckets (0–90d / 91–365d / 1–3y / 3y+) with the young-policy cutoff as a
+  tunable subquery.
+- Q5 originally dumped all 100 top-decile claims. Reworked into a 10-row fraud-rate-by-decile
+  summary with a running "share of all fraud captured" column — far more decision-useful.
+- Q9's portfolio baseline was an unweighted mean of per-make rates; switched to
+  `SUM(SUM(...)) OVER () / SUM(COUNT(*)) OVER ()` for a properly weighted 24.7%.
+- MySQL rejects `LIMIT` inside some subqueries; kept thresholds as bare scalar subqueries.
+
+**Decisions made**
+- `run_queries.py` parses the .sql by the `-- Qn.` comment banners rather than maintaining a
+  second copy of the queries — the .sql file stays the single source of truth.
+- Kept honest "no signal" queries (Q2, Q3, Q6, Q8) in the set rather than dropping them;
+  being able to say "I checked and it wasn't there" is itself interview-worthy.
+
+**Next step**
+- `analysis/analysis.ipynb` — pull these query results into pandas, build the charts, and
+  do the z-score anomaly pass checked against the real `fraud_reported` label.

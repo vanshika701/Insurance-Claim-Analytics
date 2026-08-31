@@ -14,9 +14,11 @@ proper README as the final step). Follow the brief for *what* to build; follow t
   software, committing), explain first and get a go-ahead.
 - If MySQL / credentials / environment decisions are needed, ask — never assume defaults.
 
-## 2. Maintain EXPLANATION.md continuously
+## 2. Maintain two running logs continuously
 
-There is a running log file: [EXPLANATION.md](EXPLANATION.md).
+Two files are kept up to date at every step. They have different jobs — do not merge them.
+
+### 2a. [EXPLANATION.md](EXPLANATION.md) — the process journal
 
 - **At every step**, append a new dated entry. Never overwrite earlier entries — this is a chronological journal.
 - Each entry should cover, as relevant:
@@ -26,6 +28,15 @@ There is a running log file: [EXPLANATION.md](EXPLANATION.md).
   - **Decisions made** — schema choices, assumptions, parameters (e.g. "5% of claims seeded as suspicious").
   - **Next step**.
 - Keep it readable by a recruiter or interviewer — it doubles as the story behind the project.
+
+### 2b. [ANALYSIS.md](ANALYSIS.md) — the insights log (analyst / solution-associate voice)
+
+- Whenever a query, chart, or check surfaces a **business insight**, add a numbered finding
+  (F1, F2, …) using the file's template: **Finding** (with numbers) → **So what** →
+  **Recommended action** → **Confidence & caveats**.
+- This file is about *conclusions a stakeholder would care about*, not how we got there.
+- Write it as if briefing an insurance client: fraud risk, loss ratios, regional patterns,
+  process bottlenecks, demographic skews. Always quantify. Always note sample size / caveats.
 
 ## 3. Remind the user to push after every small feature
 
