@@ -170,4 +170,23 @@ and `umbrella_limit >= 0`.
 
 ---
 
+### F8 — A z-score "claim amount anomaly" flag is near-useless for fraud (notebook §7)
+**Finding** — Flagging claims whose `total_claim_amount` is >3 SD from the mean *of their
+severity group* flags only **4 of 1,000** claims, of which **1** is fraud:
+precision 25% (≈ the 24.7% base rate), recall **0.4%**. A one-line rule — "investigate
+every Major Damage claim" — flags 276 claims at **61% precision / 68% recall**.
+
+**So what** — Confirms F3 from the other direction: because fraud here is not about claim
+size, an amount-based outlier detector cannot find it. The naive "z-score anomaly = fraud"
+approach that many projects stop at would have added no value.
+
+**Recommended action** — Skip amount-anomaly scoring for fraud triage. If a model is built,
+train it on incident features (severity, type, evidence completeness, make) with fraud as
+the label — do not rely on unsupervised cost outliers.
+
+**Confidence & caveats** — Direct comparison against ground truth on the full dataset;
+the z-score method itself is deliberately simple (per-group, |z|>3).
+
+---
+
 _Add new findings below as the analysis progresses._

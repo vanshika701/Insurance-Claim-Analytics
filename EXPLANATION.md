@@ -134,3 +134,48 @@ mix, seasonality, vehicle make, and cumulative claim cost.
 **Next step**
 - `analysis/analysis.ipynb` — pull these query results into pandas, build the charts, and
   do the z-score anomaly pass checked against the real `fraud_reported` label.
+
+---
+
+## 2026-08-31 — Python analysis notebook + charts
+
+**What we are building**
+`analysis/analysis.ipynb`: pulls the SQL results into pandas, renders 7 charts to
+`charts/*.png`, and runs the z-score anomaly detector against ground truth.
+
+**Done this step**
+- Notebook with 7 figures: (1) fraud rate by severity×type, (2) by state, (3) claim-amount
+  box plots fraud vs legit by severity, (4) by age bracket, (5) by vehicle make,
+  (6) cumulative claim cost line, (7) z-score anomaly scatter vs fraud.
+- The notebook reuses `queries/run_queries.split_statements` so chart data comes straight
+  from `analysis_queries.sql` — no duplicated SQL.
+- Chart styling follows a CVD-safe palette (blue = legitimate / normal, red = fraud /
+  above-average), recessive grid, direct value labels, portfolio-average reference line.
+- Z-score anomaly result: flags 4/1000 claims, precision 25% / recall 0.4% → written up as
+  **F8** in ANALYSIS.md. Contrasted with a plain "flag all Major Damage" rule (61% / 68%).
+- Executed end-to-end with `jupyter nbconvert --execute`; outputs committed in the .ipynb.
+- `nbformat` + `nbconvert` added to `requirements.txt`.
+
+**Insights found**
+- The charts make F2–F6 visual; the standout is chart 3 — fraud and legit box plots sit
+  almost on top of each other at every severity level.
+- Chart 7 visually confirms F8: the 4 amount-anomaly rings are nowhere near the red (fraud) mass.
+
+**Difficulties faced**
+- First version of the anomaly scatter called `.astype("category").cat.codes` separately on
+  the fraud and non-fraud subsets, so the two could map the same severity to different
+  x-positions. Fixed by computing the categorical once and indexing it — this also silently
+  corrected which severity the anomaly rings were drawn under.
+- Legend in chart 7 overlapped a data point at the top-left; moved it below the axis.
+- Jitter used an unseeded RNG (non-reproducible runs); switched to `np.random.default_rng(0)`.
+- Python 3.14 + Homebrew MySQL: needed `mysql-connector-python` (pure-Python path) rather
+  than `mysqlclient`; already handled in the connection helper.
+
+**Decisions made**
+- Charts exported as PNGs and committed (recruiter-facing, per `.gitignore` note).
+- Kept the anomaly section deliberately simple and let the *evaluation against ground truth*
+  be the interesting part, rather than reaching for a real ML model.
+
+**Next step**
+- Rewrite `README.md` from a brief into the real recruiter-facing README (problem statement,
+  schema diagram, sample queries + output, key insights, how-to-run, dataset attribution).
