@@ -7,9 +7,9 @@ Required talking points this file must cover (tracked here as they're answered):
 - [x] Why MCP instead of plain function calling — see Phase 0/4.
 - [x] How data leakage was avoided in the model — Phase 2 (the `insured_hobbies` finding).
 - [x] Why results on a 1,000-row dataset should be interpreted cautiously — Phase 2.
-- [ ] Chunking strategy — Phase 3.
-- [ ] Embedding model choice — Phase 3.
-- [ ] Why hybrid search — Phase 3.
+- [x] Chunking strategy — Phase 3.
+- [x] Embedding model choice — Phase 3.
+- [x] Why hybrid search — Phase 3.
 - [ ] How SQL injection/abuse is prevented — Phase 4.
 - [x] Dual-backend (MySQL/SQLite) data access layer — Phase 1.
 
@@ -243,3 +243,98 @@ that 23 additional features — demographics, policy terms, vehicle details — 
 essentially nothing once `incident_severity` is known. That's a real, defensible finding
 about this dataset; a model that "beat" the rule by half a point after enough tuning
 would not be.
+
+---
+
+## Phase 3 — RAG over fraud guidelines
+
+**What was built:** `rag/parse.py` (PDF to per-page text, page numbers kept),
+`rag/chunk.py` (page text to cited chunks), `rag/embeddings.py`
+(`sentence-transformers/all-MiniLM-L6-v2`, local, no API), `rag/build_index.py`
+(embeds all chunks into a persistent ChromaDB collection), and `rag/retrieve.py`
+(BM25 + vector search combined with Reciprocal Rank Fusion, every result cited by
+file + page).
+
+**Getting real documents:** searched for the brief's suggested sources. NAIC's
+`content.naic.org` serves a Cloudflare bot challenge to non-browser clients -- confirmed
+blocked with both `curl` and the WebFetch tool, not just assumed. Found and downloaded two
+different real, substantive documents instead: the **IRDAI (India) Insurance Fraud
+Monitoring Framework Guidelines, 2025** (13 pages, 18,840 characters of extractable text)
+and the **California DOI Fraud Division's SIU Annual Report** sample/template (20 pages,
+16,587 characters) -- together 64 retrievable chunks. A third candidate (a 1-page CA DOI
+infographic) was downloaded, found to have only 538 characters of text, and dropped as not
+useful. The NAIC documents are listed in `docs/guidelines/README.md` as optional manual
+downloads -- not a blocker, since the two documents in hand are a real, working corpus.
+
+**Why each choice was made:**
+- **Chunking strategy -- never cross a page boundary.** A chunk spanning pages 4 and 5
+  forces picking one page number for text that came from two different pages, which makes
+  roughly half of such a chunk's citation wrong. Keeping every chunk inside one page means
+  every citation is exactly, mechanically verifiable against the source PDF -- which
+  matters a lot for a tool whose entire value proposition is "trustworthy citations."
+  Target size ~800 characters with ~150 overlap: large enough to be a coherent unit of
+  meaning (not a sentence fragment), small enough that a retrieved chunk points at a
+  specific clause rather than forcing the reader through a whole page. On this corpus the
+  actual chunks came out shorter on average (mean 626 chars) because most guideline pages
+  are naturally under 800 characters -- the size cap matters on the few longer pages.
+- **Embedding model -- `all-MiniLM-L6-v2`.** Runs fully locally (no embedding API call,
+  no added network dependency for the MCP server), ~90MB, produces 384-dim vectors,
+  embeds a query in well under a second on CPU, and is a long-standing, heavily
+  benchmarked default for short-passage semantic search -- appropriate for a 64-chunk
+  corpus where a much larger model would be solving a problem this corpus doesn't have.
+- **Hybrid search (BM25 + vector + RRF), not vector alone.** BM25 is lexical -- it wins
+  when the query uses the guideline's own vocabulary (form numbers, defined terms like
+  "SIU", exact section references). Vector search is semantic -- it wins when the query
+  describes a concept without the guideline's exact wording. An investigator's real
+  questions will be a mix of both. **Reciprocal Rank Fusion** combines the two rankings by
+  rank position (`1/(60+rank)` per method, summed), not by raw score -- which matters
+  because BM25 scores (unbounded, corpus-dependent) and cosine similarities (0-1) live on
+  incomparable scales; normalizing and summing them directly would be arbitrary, while RRF
+  sidesteps that entirely. Measured head-to-head against BM25-only and vector-only in
+  Phase 6.
+- **Rebuild BM25 from the Chroma corpus at query time instead of persisting a second
+  index.** The whole corpus is 64 chunks -- re-tokenizing it on first use costs
+  milliseconds and avoids keeping two index files in sync. This is a deliberate
+  simplification that would stop making sense at a much larger corpus size (thousands of
+  chunks), where a persisted BM25 index would be worth the complexity.
+
+**Alternatives considered and rejected:**
+- *Fixed-size chunking across the whole document, ignoring page boundaries.* Rejected for
+  the citation-accuracy reason above -- this is a RAG system for an investigator who needs
+  to go check the source, not a chatbot where an approximate page number is good enough.
+- *A larger/more powerful embedding model (e.g. an OpenAI or Cohere embedding API).*
+  Rejected -- adds an external network dependency and per-query cost/latency to the MCP
+  server for a 64-chunk corpus that a 90MB local model already handles well; the quality
+  ceiling of a bigger model isn't the bottleneck here, corpus size is.
+- *Vector-only retrieval* (skip BM25/RRF entirely). Rejected -- and Phase 6 exists
+  specifically to not just assert "hybrid is better" but to measure it on this corpus with
+  hit@5/MRR.
+
+### Likely interview questions
+
+**Q: Walk me through your chunking strategy and why you picked those numbers.**
+A: Chunks never cross a page boundary -- that's the load-bearing decision, because it
+guarantees every citation's page number is exactly correct, not an approximation. Within
+that constraint, I used a sliding window of ~800 characters with ~150 characters of
+overlap. 800 characters is roughly a paragraph-and-a-half -- enough for the embedding
+model to see a complete thought, small enough that a retrieved chunk is actually useful to
+read, not a full page dump. The overlap means a clause that falls right at a chunk
+boundary still appears whole in at least one chunk.
+
+**Q: Why all-MiniLM-L6-v2 instead of a bigger embedding model?**
+A: It's local (no API dependency or per-call cost for the MCP server), fast enough to
+embed a query in well under a second on CPU, and it's a well-benchmarked default for
+short-passage retrieval. With a 64-chunk corpus from two documents, the bottleneck is
+corpus size and chunk quality, not embedding model capacity -- a bigger model wouldn't
+move the needle on a corpus this small, and would cost more in dependency weight (this is
+already the heaviest piece of `requirements-copilot.txt` because of `torch`).
+
+**Q: Why hybrid search instead of just vector search, which is what most RAG demos use?**
+A: Because guideline documents are full of exact vocabulary -- "Risk Management
+Committee," specific clause numbers, defined terms like "Integral anti-fraud personnel" --
+that an investigator is likely to type verbatim, and that's exactly where lexical search
+(BM25) outperforms semantic search; embeddings can blur a specific defined term into its
+general neighborhood of meaning. Vector search in turn wins on paraphrased or conceptual
+questions. Combining them with Reciprocal Rank Fusion gets both without having to
+normalize two incomparable score scales -- and I didn't just assert hybrid is better, I
+measured it against each method alone in Phase 6.

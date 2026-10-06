@@ -69,11 +69,24 @@ Legend: `[x]` done & verified by running code · `[~]` partially done / blocked 
 **Blockers:** none.
 
 ## Phase 3 — RAG over fraud guidelines
-- [ ] `docs/guidelines/` populated (downloaded or listed as a blocker for the user).
-- [ ] PDFs parsed with page numbers kept.
-- [ ] Chunking strategy chosen and justified.
-- [ ] Embeddings via local `sentence-transformers` into a persistent ChromaDB collection.
-- [ ] Hybrid retrieval: BM25 + vector + Reciprocal Rank Fusion, citations with file + page.
+- [x] `docs/guidelines/` populated with 2 real, substantive public PDFs: IRDAI (India)
+      *Insurance Fraud Monitoring Framework Guidelines, 2025* (13 pages) and California
+      DOI Fraud Division *SIU Annual Report* sample (20 pages) → 64 chunks total.
+      NAIC's `content.naic.org` is blocked by a Cloudflare challenge for non-browser
+      clients (confirmed with curl AND WebFetch) — listed as an optional manual add in
+      `docs/guidelines/README.md`, not a blocker.
+- [x] `rag/parse.py` — PDFs parsed per-page with page numbers kept.
+- [x] `rag/chunk.py` — chunking never crosses a page boundary (exact citations); ~800
+      char target / ~150 overlap. Justified in docs/INTERVIEW_NOTES.md.
+- [x] `rag/embeddings.py` + `rag/build_index.py` — local `sentence-transformers/all-MiniLM-L6-v2`
+      (384-dim), persistent ChromaDB collection at `docs/guidelines/chroma/` (gitignored,
+      regenerable via `python -m rag.build_index`).
+- [x] `rag/retrieve.py` — BM25 (rank_bm25) + vector (Chroma) + Reciprocal Rank Fusion.
+      Every result carries `{file, page}`. Verified with a real query
+      ("what must a board approved anti-fraud policy include") — top hit correctly
+      IRDAI p.3, the Risk Management Committee clause.
+
+**Blockers:** none (NAIC PDFs are an optional nice-to-have, not required).
 
 ## Phase 4 — MCP server
 - [ ] `mcp_server/server.py` using the SDK's `MCPServer` (the current name for `FastMCP`) exposing
