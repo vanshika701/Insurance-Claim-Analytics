@@ -136,7 +136,12 @@ Full write-up with recommended actions and caveats: [`ANALYSIS.md`](ANALYSIS.md)
    amount (per severity) catches **0.4% of fraud at ~base-rate precision** — a direct
    consequence of insight #2, and a demonstration of why unsupervised cost-outlier
    detection is the wrong tool for this problem.
-7. **Two data-quality bugs found:** one incident dated before its policy's bind date; one
+7. **A supervised model ties the one-line rule.** Logistic regression and a depth-4
+   decision tree on incident/policy/vehicle features both reach **ROC-AUC ≈ 0.77** on
+   held-out data — level with "flag every Major Damage claim." The extra features add
+   little; the model's only real edge is a tunable precision/recall threshold.
+   ([`analysis/fraud_model.py`](analysis/fraud_model.py))
+8. **Two data-quality bugs found:** one incident dated before its policy's bind date; one
    negative `umbrella_limit`. Both isolated; ingestion validation recommended.
 
 ### Charts
@@ -147,6 +152,7 @@ Exported to [`charts/`](charts/) by the notebook:
 |---|---|
 | ![Fraud by severity and type](charts/01_fraud_by_severity_type.png) | ![Claim amount fraud vs legit](charts/03_claim_amount_fraud_vs_legit.png) |
 | ![Fraud by vehicle make](charts/05_fraud_by_make.png) | ![Z-score anomaly vs fraud](charts/07_zscore_anomaly_vs_fraud.png) |
+| ![Model vs baseline](charts/08_model_vs_baseline.png) | |
 
 ---
 
@@ -158,6 +164,7 @@ Exported to [`charts/`](charts/) by the notebook:
 | Data prep | Python, pandas, numpy |
 | DB access | SQLAlchemy + `mysql-connector-python`, credentials via `python-dotenv` |
 | Analysis | Jupyter, pandas, matplotlib, seaborn |
+| Modeling | scikit-learn (logistic regression, decision tree) |
 | Queries | 10 commented SQL queries — CTEs, `RANK`/`DENSE_RANK`, `NTILE`, `PERCENT_RANK`, `LAG`, `SUM() OVER`, correlated subqueries, conditional aggregation |
 
 ---
@@ -192,7 +199,12 @@ python queries/run_queries.py
 
 # 6. Charts + anomaly detection
 jupyter notebook analysis/analysis.ipynb
+
+# 7. Fraud-scoring model (logistic regression + decision tree vs the one-line rule)
+python analysis/fraud_model.py
 ```
+
+Or, with `make`: `make setup` → `make db` → (edit `.env`) → `make all`.
 
 ---
 
@@ -210,9 +222,12 @@ queries/
   run_queries.py            execute + pretty-print each result
 analysis/
   analysis.ipynb            pandas analysis, 7 charts, z-score anomaly pass
+  fraud_model.py            supervised fraud-scoring model vs the one-line rule
 charts/                     exported PNGs
-ANALYSIS.md                 business findings (F1–F8), analyst voice
+ANALYSIS.md                 business findings (F1–F9), analyst voice
 EXPLANATION.md              build journal: decisions, difficulties, insights per step
+INTERVIEW_NOTES.md          spoken-answer prep — pitch, query walk-throughs, gotchas
+Makefile                    make setup / db / load / queries / analyze / model / all
 ```
 
 ---

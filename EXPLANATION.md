@@ -213,3 +213,46 @@ and laying down an intentional, incremental commit history.
 **Next step**
 - Project complete. Optional follow-ups: a lightweight fraud-scoring model on incident
   features; wiring `run_queries.py` output into the README automatically.
+
+---
+
+## 2026-08-31 — Optional polish: model, interview notes, Makefile, fresh notebook run
+
+**What we are building**
+Four extras beyond the brief to make the repo interview-ready.
+
+**Done this step**
+- `analysis/fraud_model.py` — L2 logistic regression + depth-4 decision tree on incident/
+  policy/vehicle features, stratified 70/30 split, evaluated against the "all Major Damage"
+  baseline. Saves `charts/08_model_vs_baseline.png` (PR curve + confusion matrix).
+- `INTERVIEW_NOTES.md` — 30-sec pitch, the normalization story, three query walk-throughs
+  (incl. the Q3 CTE bug), the fraud narrative, the "did the model help" answer, "what I'd
+  do with more data", a SQL-technique cheat-sheet, and likely gotcha questions.
+- `Makefile` — `setup / db / load / queries / analyze / model / all / clean`.
+- Re-ran the analysis notebook end-to-end from a clean state: executes, exit 0.
+- `scikit-learn` added to `requirements.txt`; README updated (insight #7, tech stack,
+  run steps, repo layout, chart 08).
+
+**Insights found**
+- **F9: the model ties the one-line rule.** Both models land at ROC-AUC ≈ 0.77, level with
+  "flag every Major Damage claim." Largest logistic coefficient by far is Major Damage
+  (1.9). The extra features barely move the needle — which is the same story the SQL told,
+  now confirmed with a held-out test set. The model's only real edge is a tunable
+  precision/recall threshold.
+- Confusion matrix at threshold 0.5: 50 TP / 24 FN / 40 FP / 186 TN on 300 test claims.
+
+**Difficulties faced**
+- `OneHotEncoder` needed `min_frequency=15` — several `auto_model` / occupation values
+  appear only a handful of times and would otherwise blow up the feature count and overfit.
+- Had to be careful about label leakage: `incident_severity` is such a strong predictor
+  that it's worth stating out loud it may be partly label-derived in this teaching dataset.
+  Noted in F2, F9, and INTERVIEW_NOTES.
+
+**Decisions made**
+- Kept the model as a standalone script, not a notebook section — easier to run in CI /
+  `make model` and it keeps the EDA notebook focused.
+- Deliberately did not tune hyperparameters hard or try ensembles: the honest finding is
+  "a simple model ties a one-liner," and chasing 0.01 AUC would obscure that.
+
+**Next step**
+- Project complete. Nothing outstanding.

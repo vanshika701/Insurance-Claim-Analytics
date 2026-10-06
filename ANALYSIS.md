@@ -189,4 +189,25 @@ the z-score method itself is deliberately simple (per-group, |z|>3).
 
 ---
 
+### F9 — A supervised model ties the one-line rule (analysis/fraud_model.py)
+**Finding** — L2 logistic regression and a depth-4 decision tree, trained on incident +
+policy + vehicle features (stratified 70/30 split), both reach **ROC-AUC ≈ 0.77 on
+held-out data** — statistically indistinguishable from the "flag every Major Damage claim"
+baseline (AUC 0.77, 62% precision / 68% recall). The logistic model's largest coefficient
+by far is `incident_severity = Major Damage` (1.9); European makes and a few demographic
+flags follow with small weights — exactly what the EDA predicted.
+
+**So what** — The extra features add almost no discriminatory power on this book; severity
+is the signal. The model's one genuine advantage is a **tunable threshold** — its
+precision–recall curve lets you trade recall for precision, which a fixed rule cannot.
+
+**Recommended action** — Ship the simple severity rule now. Only invest in a model if
+(a) richer features become available (adjuster/process data, claimant history) or (b) the
+business needs threshold control for capacity planning.
+
+**Confidence & caveats** — Single split, small test set (300). `incident_severity` may be
+partly label-derived in this dataset, which would inflate both the rule and the model.
+
+---
+
 _Add new findings below as the analysis progresses._

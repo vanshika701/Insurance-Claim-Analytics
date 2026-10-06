@@ -1,0 +1,256 @@
+{
+  "n_claims": 1000,
+  "fraud_rate": 0.247,
+  "cv": {
+    "n_folds": 5,
+    "random_state": 42
+  },
+  "cv_metrics": {
+    "logistic_regression": {
+      "precision": {
+        "mean": 0.5252912759306622,
+        "std": 0.05286379258638913
+      },
+      "recall": {
+        "mean": 0.6799183673469387,
+        "std": 0.044631789881820524
+      },
+      "f1": {
+        "mean": 0.5911771615161445,
+        "std": 0.04087130440903548
+      },
+      "pr_auc": {
+        "mean": 0.5366632586330954,
+        "std": 0.04405430941330814
+      },
+      "roc_auc": {
+        "mean": 0.762494037933054,
+        "std": 0.02802405843063708
+      }
+    },
+    "xgboost": {
+      "precision": {
+        "mean": 0.5576100368343336,
+        "std": 0.02533527034693421
+      },
+      "recall": {
+        "mean": 0.6194285714285714,
+        "std": 0.059117824028524224
+      },
+      "f1": {
+        "mean": 0.585110696593064,
+        "std": 0.028543806092169353
+      },
+      "pr_auc": {
+        "mean": 0.5100162212711417,
+        "std": 0.03508881166644195
+      },
+      "roc_auc": {
+        "mean": 0.7545714069468847,
+        "std": 0.03569196707068147
+      }
+    },
+    "baseline_major_damage": {
+      "precision": {
+        "mean": 0.6083131792615178,
+        "std": 0.04814680404434513
+      },
+      "recall": {
+        "mean": 0.6758367346938775,
+        "std": 0.07427961401281342
+      },
+      "f1": {
+        "mean": 0.6373674261894896,
+        "std": 0.04114348068411896
+      },
+      "pr_auc": {
+        "mean": 0.4910350017807614,
+        "std": 0.0423629940493155
+      },
+      "roc_auc": {
+        "mean": 0.7655695814749742,
+        "std": 0.03196749388027105
+      }
+    }
+  },
+  "threshold_selection": {
+    "baseline_precision": 0.6083131792615178,
+    "baseline_recall": 0.6758367346938775,
+    "at_baseline_recall": {
+      "threshold": 0.385,
+      "precision": 0.5149700598802395,
+      "recall": 0.6963562753036437
+    },
+    "at_baseline_precision": {
+      "threshold": 0.9,
+      "precision": 0.6153846153846154,
+      "recall": 0.06477732793522267
+    },
+    "chosen_threshold": 0.385,
+    "beats_baseline": false,
+    "rationale": "Chosen threshold matches the baseline rule's recall and reports the precision achieved at that recall -- the model is only worth using operationally if it gets equal-or-better recall for less investigator effort (fewer false positives, i.e. higher precision)."
+  },
+  "shap_global_importance_top10": [
+    {
+      "feature": "cat__incident_severity_Major Damage",
+      "mean_abs_shap": 0.855940043926239
+    },
+    {
+      "feature": "cat__incident_state_WV",
+      "mean_abs_shap": 0.41503027081489563
+    },
+    {
+      "feature": "cat__insured_occupation_exec-managerial",
+      "mean_abs_shap": 0.37992802262306213
+    },
+    {
+      "feature": "cat__insured_occupation_handlers-cleaners",
+      "mean_abs_shap": 0.353923499584198
+    },
+    {
+      "feature": "cat__auto_make_Accura",
+      "mean_abs_shap": 0.21149499714374542
+    },
+    {
+      "feature": "cat__auto_make_Nissan",
+      "mean_abs_shap": 0.1911073476076126
+    },
+    {
+      "feature": "cat__insured_occupation_priv-house-serv",
+      "mean_abs_shap": 0.1897660344839096
+    },
+    {
+      "feature": "cat__auto_make_Volkswagen",
+      "mean_abs_shap": 0.17478391528129578
+    },
+    {
+      "feature": "num__policy_annual_premium",
+      "mean_abs_shap": 0.17195330560207367
+    },
+    {
+      "feature": "cat__incident_severity_Minor Damage",
+      "mean_abs_shap": 0.16693240404129028
+    }
+  ],
+  "feature_set": {
+    "categorical": [
+      "incident_severity",
+      "incident_type",
+      "collision_type",
+      "authorities_contacted",
+      "property_damage",
+      "police_report_available",
+      "incident_state",
+      "policy_state",
+      "policy_csl",
+      "insured_sex",
+      "insured_education_level",
+      "insured_occupation",
+      "insured_relationship",
+      "auto_make"
+    ],
+    "numeric": [
+      "number_of_vehicles_involved",
+      "bodily_injuries",
+      "witnesses",
+      "incident_hour_of_the_day",
+      "months_as_customer",
+      "age",
+      "policy_deductable",
+      "policy_annual_premium",
+      "umbrella_limit",
+      "capital_gains",
+      "capital_loss",
+      "auto_year",
+      "total_claim_amount"
+    ],
+    "excluded_columns": {
+      "fraud_reported": "the label itself.",
+      "claim_id": "surrogate key, no generalizable signal; a tree could memorize it.",
+      "incident_id": "surrogate key, same reason.",
+      "policy_number": "natural key, same reason.",
+      "vehicle_id": "surrogate key, same reason.",
+      "insured_zip": "995 distinct values across 1,000 rows -- functionally an identifier, not a generalizable category; including it risks memorizing individual policyholders rather than learning a pattern.",
+      "incident_city": "high-cardinality free text; same identifier risk as insured_zip.",
+      "incident_location": "a street address -- uniquely identifying, not a repeatable pattern.",
+      "auto_model": "39 values spread across only 14 auto_make values and 1,000 rows -- too sparse to generalize; auto_make alone already captures the make-level signal found in the SQL analysis (ANALYSIS.md F5).",
+      "injury_claim": "a component of total_claim_amount (injury + property + vehicle = total, verified in data/normalize_data.py). Including the components alongside the total adds perfect collinearity, not new information.",
+      "property_claim": "same reason as injury_claim.",
+      "vehicle_claim": "same reason as injury_claim.",
+      "policy_bind_date": "raw date; tenure is already captured by months_as_customer. The SQL analysis (Q3) found no usable signal from the exact bind date.",
+      "incident_date": "raw date; the data only spans ~2 months (ANALYSIS.md F6/Q8), so a date-derived feature would overfit to that narrow window rather than learn anything that generalizes.",
+      "insured_hobbies": "EXCLUDED FROM THE PRODUCTION MODEL DESPITE BEING THE SINGLE STRONGEST UNIVARIATE PREDICTOR FOUND. 'chess' -> 82.6% fraud (n=46) and 'cross-fit' -> 74.3% fraud (n=35), versus <=30% for every other one of 20 hobby values and a 24.7% portfolio base rate. There is no real-world causal story connecting a hobby to fraud at that magnitude; this is a well-known artifact of this specific public dataset. Using it would make the model look far more accurate than any model built on real claims data could be. A sensitivity run WITH it included is still produced (see train_model.py --with-hobbies) purely to document the effect size, never as a deployed feature."
+    }
+  },
+  "hobbies_sensitivity_check": {
+    "description": "Same CV, same models, with insured_hobbies added back as a categorical feature. NOT used in the deployed model -- see features.py EXCLUDED_COLUMNS for why.",
+    "cv_metrics": {
+      "logistic_regression": {
+        "precision": {
+          "mean": 0.6371604061688808,
+          "std": 0.0717341449683649
+        },
+        "recall": {
+          "mean": 0.8021224489795917,
+          "std": 0.06424723176011543
+        },
+        "f1": {
+          "mean": 0.7048274531740869,
+          "std": 0.028503957829062704
+        },
+        "pr_auc": {
+          "mean": 0.6406204856108275,
+          "std": 0.05441487254541511
+        },
+        "roc_auc": {
+          "mean": 0.8637913303599586,
+          "std": 0.006933833917686035
+        }
+      },
+      "xgboost": {
+        "precision": {
+          "mean": 0.6540153748218265,
+          "std": 0.03858705983730715
+        },
+        "recall": {
+          "mean": 0.805877551020408,
+          "std": 0.05774181717838519
+        },
+        "f1": {
+          "mean": 0.7196525667257374,
+          "std": 0.01836770006500861
+        },
+        "pr_auc": {
+          "mean": 0.6319181504117938,
+          "std": 0.03715167315860524
+        },
+        "roc_auc": {
+          "mean": 0.860062094877686,
+          "std": 0.015802961454793995
+        }
+      },
+      "baseline_major_damage": {
+        "precision": {
+          "mean": 0.6083131792615178,
+          "std": 0.04814680404434513
+        },
+        "recall": {
+          "mean": 0.6758367346938775,
+          "std": 0.07427961401281342
+        },
+        "f1": {
+          "mean": 0.6373674261894896,
+          "std": 0.04114348068411896
+        },
+        "pr_auc": {
+          "mean": 0.4910350017807614,
+          "std": 0.0423629940493155
+        },
+        "roc_auc": {
+          "mean": 0.7655695814749742,
+          "std": 0.03196749388027105
+        }
+      }
+    }
+  }
+}

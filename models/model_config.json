@@ -1,0 +1,34 @@
+{
+  "categorical": [
+    "incident_severity",
+    "incident_type",
+    "collision_type",
+    "authorities_contacted",
+    "property_damage",
+    "police_report_available",
+    "incident_state",
+    "policy_state",
+    "policy_csl",
+    "insured_sex",
+    "insured_education_level",
+    "insured_occupation",
+    "insured_relationship",
+    "auto_make"
+  ],
+  "numeric": [
+    "number_of_vehicles_involved",
+    "bodily_injuries",
+    "witnesses",
+    "incident_hour_of_the_day",
+    "months_as_customer",
+    "age",
+    "policy_deductable",
+    "policy_annual_premium",
+    "umbrella_limit",
+    "capital_gains",
+    "capital_loss",
+    "auto_year",
+    "total_claim_amount"
+  ],
+  "threshold": 0.385
+}

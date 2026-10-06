@@ -48,12 +48,25 @@ Legend: `[x]` done & verified by running code · `[~]` partially done / blocked 
 **Blockers:** none.
 
 ## Phase 2 — Fraud risk model
-- [ ] Feature set built from the joined tables, with every excluded/leaky column documented.
-- [ ] Stratified 5-fold CV: logistic regression + XGBoost, precision/recall/F1/PR-AUC mean±std.
-- [ ] Both compared against the "flag all Major Damage" rule baseline on the same folds.
-- [ ] Decision threshold chosen deliberately and explained.
-- [ ] SHAP explanations per claim.
-- [ ] Artifacts saved to `models/`, metrics to `results/model_metrics.json`.
+- [x] `copilot/features.py` — feature set + `EXCLUDED_COLUMNS` documenting every exclusion.
+- [x] Stratified 5-fold CV (`copilot/train_model.py`): logistic regression + XGBoost.
+      **Real results:** baseline (Major Damage rule) precision 0.608±0.048 / recall
+      0.676±0.074 / F1 **0.637±0.041**; logistic precision 0.525±0.053 / recall
+      0.680±0.045 / F1 0.591±0.041; XGBoost precision 0.558±0.025 / recall 0.619±0.059 /
+      F1 0.585±0.029. **Neither model beats the baseline** (reported honestly).
+- [x] Threshold selection: at the baseline's recall (67.6%), XGBoost's precision is 51.5%
+      vs the baseline's 60.8% — `beats_baseline: false`.
+- [x] Major finding while building features: `insured_hobbies` ('chess' 82.6% fraud n=46,
+      'cross-fit' 74.3% n=35 vs ≤30% elsewhere) is a near-certain dataset artifact.
+      Excluded from the deployed model; a sensitivity run confirms it alone pushes
+      ROC-AUC from 0.76 → 0.864. Documented in `features.py` and `model_metrics.json`.
+- [x] SHAP: global importance (top feature: `incident_severity_Major Damage`, 0.856,
+      dwarfing everything else) + per-claim explanation via `copilot/score.py`
+      (tested on claim_id=1 and a missing id, on both DB backends).
+- [x] Artifacts saved: `models/xgboost_pipeline.joblib`, `models/model_config.json`,
+      `results/model_metrics.json`.
+
+**Blockers:** none.
 
 ## Phase 3 — RAG over fraud guidelines
 - [ ] `docs/guidelines/` populated (downloaded or listed as a blocker for the user).
