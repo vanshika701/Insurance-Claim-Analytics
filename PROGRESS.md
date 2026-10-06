@@ -34,10 +34,18 @@ Legend: `[x]` done & verified by running code · `[~]` partially done / blocked 
 ---
 
 ## Phase 1 — Data access layer
-- [ ] `copilot/db.py` — read-only connection to MySQL or SQLite, backend chosen by `DB_BACKEND` env var.
-- [ ] `copilot/build_sqlite.py` — builds the SQLite fallback from the already-cleaned `data/*.csv`.
-- [ ] Data-validation check that detects the two known defects (incident before policy bind;
-      negative `umbrella_limit`) and reports them.
+- [x] `copilot/db.py` — read-only connection to MySQL or SQLite, backend chosen by `DB_BACKEND` env var.
+- [x] `copilot/build_sqlite.py` + `db/schema_sqlite.sql` — builds the SQLite fallback
+      (`data/claims.db`, gitignored/regenerable) from the already-cleaned `data/*.csv`.
+- [x] `copilot/validate.py` — detects both known defects and reports them. **Verified
+      output:** 1 incident-before-bind row (policy 794731, incident 579, flagged — not
+      repaired, by design) and 1 negative `umbrella_limit` in the raw CSV (policy 526039,
+      -1,000,000), confirmed repaired to NULL in the loaded DB.
+- [x] Ran `copilot/db.py` and `copilot/validate.py` against **both** `DB_BACKEND=mysql` and
+      `DB_BACKEND=sqlite` — identical row counts (1000/1000/1000/1000) and identical
+      validation findings on both.
+
+**Blockers:** none.
 
 ## Phase 2 — Fraud risk model
 - [ ] Feature set built from the joined tables, with every excluded/leaky column documented.
