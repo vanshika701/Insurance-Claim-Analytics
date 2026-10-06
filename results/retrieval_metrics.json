@@ -1,0 +1,376 @@
+{
+  "n_questions": 20,
+  "hit_at": 5,
+  "k_retrieved": 10,
+  "methods": {
+    "bm25_only": {
+      "hit_at_5": 1.0,
+      "mrr": 0.8916666666666666,
+      "n": 20,
+      "per_question": [
+        {
+          "id": 1,
+          "rank": 1
+        },
+        {
+          "id": 2,
+          "rank": 1
+        },
+        {
+          "id": 3,
+          "rank": 1
+        },
+        {
+          "id": 4,
+          "rank": 1
+        },
+        {
+          "id": 5,
+          "rank": 1
+        },
+        {
+          "id": 6,
+          "rank": 1
+        },
+        {
+          "id": 7,
+          "rank": 1
+        },
+        {
+          "id": 8,
+          "rank": 4
+        },
+        {
+          "id": 9,
+          "rank": 1
+        },
+        {
+          "id": 10,
+          "rank": 1
+        },
+        {
+          "id": 11,
+          "rank": 4
+        },
+        {
+          "id": 12,
+          "rank": 1
+        },
+        {
+          "id": 13,
+          "rank": 1
+        },
+        {
+          "id": 14,
+          "rank": 1
+        },
+        {
+          "id": 15,
+          "rank": 1
+        },
+        {
+          "id": 16,
+          "rank": 1
+        },
+        {
+          "id": 17,
+          "rank": 1
+        },
+        {
+          "id": 18,
+          "rank": 3
+        },
+        {
+          "id": 19,
+          "rank": 1
+        },
+        {
+          "id": 20,
+          "rank": 1
+        }
+      ]
+    },
+    "vector_only": {
+      "hit_at_5": 0.85,
+      "mrr": 0.7083333333333333,
+      "n": 20,
+      "per_question": [
+        {
+          "id": 1,
+          "rank": 2
+        },
+        {
+          "id": 2,
+          "rank": 2
+        },
+        {
+          "id": 3,
+          "rank": 1
+        },
+        {
+          "id": 4,
+          "rank": 2
+        },
+        {
+          "id": 5,
+          "rank": 1
+        },
+        {
+          "id": 6,
+          "rank": 1
+        },
+        {
+          "id": 7,
+          "rank": null
+        },
+        {
+          "id": 8,
+          "rank": null
+        },
+        {
+          "id": 9,
+          "rank": 1
+        },
+        {
+          "id": 10,
+          "rank": 1
+        },
+        {
+          "id": 11,
+          "rank": 4
+        },
+        {
+          "id": 12,
+          "rank": 1
+        },
+        {
+          "id": 13,
+          "rank": 1
+        },
+        {
+          "id": 14,
+          "rank": 1
+        },
+        {
+          "id": 15,
+          "rank": 1
+        },
+        {
+          "id": 16,
+          "rank": 6
+        },
+        {
+          "id": 17,
+          "rank": 1
+        },
+        {
+          "id": 18,
+          "rank": 4
+        },
+        {
+          "id": 19,
+          "rank": 1
+        },
+        {
+          "id": 20,
+          "rank": 1
+        }
+      ]
+    },
+    "hybrid_direct": {
+      "hit_at_5": 0.95,
+      "mrr": 0.8113888888888889,
+      "n": 20,
+      "per_question": [
+        {
+          "id": 1,
+          "rank": 1
+        },
+        {
+          "id": 2,
+          "rank": 1
+        },
+        {
+          "id": 3,
+          "rank": 1
+        },
+        {
+          "id": 4,
+          "rank": 1
+        },
+        {
+          "id": 5,
+          "rank": 1
+        },
+        {
+          "id": 6,
+          "rank": 1
+        },
+        {
+          "id": 7,
+          "rank": 4
+        },
+        {
+          "id": 8,
+          "rank": 9
+        },
+        {
+          "id": 9,
+          "rank": 1
+        },
+        {
+          "id": 10,
+          "rank": 1
+        },
+        {
+          "id": 11,
+          "rank": 5
+        },
+        {
+          "id": 12,
+          "rank": 1
+        },
+        {
+          "id": 13,
+          "rank": 1
+        },
+        {
+          "id": 14,
+          "rank": 1
+        },
+        {
+          "id": 15,
+          "rank": 1
+        },
+        {
+          "id": 16,
+          "rank": 3
+        },
+        {
+          "id": 17,
+          "rank": 1
+        },
+        {
+          "id": 18,
+          "rank": 3
+        },
+        {
+          "id": 19,
+          "rank": 1
+        },
+        {
+          "id": 20,
+          "rank": 1
+        }
+      ]
+    },
+    "hybrid_via_mcp_client": {
+      "hit_at_5": 0.95,
+      "mrr": 0.8113888888888889,
+      "n": 20,
+      "per_question": [
+        {
+          "id": 1,
+          "rank": 1
+        },
+        {
+          "id": 2,
+          "rank": 1
+        },
+        {
+          "id": 3,
+          "rank": 1
+        },
+        {
+          "id": 4,
+          "rank": 1
+        },
+        {
+          "id": 5,
+          "rank": 1
+        },
+        {
+          "id": 6,
+          "rank": 1
+        },
+        {
+          "id": 7,
+          "rank": 4
+        },
+        {
+          "id": 8,
+          "rank": 9
+        },
+        {
+          "id": 9,
+          "rank": 1
+        },
+        {
+          "id": 10,
+          "rank": 1
+        },
+        {
+          "id": 11,
+          "rank": 5
+        },
+        {
+          "id": 12,
+          "rank": 1
+        },
+        {
+          "id": 13,
+          "rank": 1
+        },
+        {
+          "id": 14,
+          "rank": 1
+        },
+        {
+          "id": 15,
+          "rank": 1
+        },
+        {
+          "id": 16,
+          "rank": 3
+        },
+        {
+          "id": 17,
+          "rank": 1
+        },
+        {
+          "id": 18,
+          "rank": 3
+        },
+        {
+          "id": 19,
+          "rank": 1
+        },
+        {
+          "id": 20,
+          "rank": 1
+        }
+      ],
+      "end_to_end_tool_checks": {
+        "tools_listed": [
+          "get_schema",
+          "run_query",
+          "score_claim",
+          "search_guidelines"
+        ],
+        "get_schema": {
+          "ok": true
+        },
+        "run_query_valid": {
+          "ok": true
+        },
+        "run_query_blocked_injection": {
+          "ok": true
+        },
+        "score_claim": {
+          "ok": true
+        }
+      }
+    }
+  },
+  "note": "bm25_only and vector_only call rag/retrieve.py directly -- only hybrid is exposed as the search_guidelines MCP tool, by design. hybrid_direct and hybrid_via_mcp_client should (and do) agree; hybrid_via_mcp_client is the one measured through the actual protocol a client like Claude Desktop uses."
+}

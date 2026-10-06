@@ -140,10 +140,34 @@ Legend: `[x]` done & verified by running code · `[~]` partially done / blocked 
 **Blockers:** none.
 
 ## Phase 6 — Evaluation
-- [ ] `eval/questions.json` — 20 real questions grounded in the actual guideline documents.
-- [ ] `eval/run_eval.py` — MCP client over stdio; hit@5 and MRR.
-- [ ] BM25-only vs vector-only vs hybrid comparison → `results/retrieval_metrics.json`.
-- [ ] End-to-end check calling every tool through the MCP client.
+- [x] `eval/questions.json` — 20 questions, each hand-written from the actual PDF text
+      (13 from IRDAI, 7 from CA DOI SIU report), each with an exact `{file, page}` and an
+      `answer_hint` for a human reviewer.
+- [x] `eval/run_eval.py` — connects to the MCP server as a real MCP client over stdio,
+      calls `search_guidelines` for every question (hybrid, via the actual protocol path),
+      and separately runs an end-to-end check calling `get_schema`, `run_query` (valid +
+      a blocked injection attempt), and `score_claim` through the same client session.
+      **All 4 tool checks passed.**
+- [x] **Real results** (`results/retrieval_metrics.json`, hit@5 / MRR over 20 questions,
+      top-10 retrieved):
+
+      | Method | hit@5 | MRR |
+      |---|---|---|
+      | BM25-only | **1.00** | **0.892** |
+      | Vector-only | 0.85 | 0.708 |
+      | Hybrid (direct call) | 0.95 | 0.811 |
+      | Hybrid (via MCP client) | 0.95 | 0.811 (matches direct exactly) |
+
+      **Honest finding: BM25-only actually beat hybrid on this question set.** Hybrid
+      recovered 2 of vector-only's 3 misses (questions 7 and 16), so it's not strictly
+      worse than vector-only — but it didn't beat pure BM25 here. Most plausible reason,
+      documented rather than hidden: these 20 questions were hand-written while reading
+      the source pages, so they reuse a lot of the documents' own vocabulary — exactly
+      the condition where lexical search has the advantage and semantic search's
+      paraphrase-robustness doesn't get exercised. Noted as a limitation of a small,
+      hand-authored eval set, not as "hybrid search doesn't work."
+
+**Blockers:** none.
 
 ## Phase 7 — Demo, docs, wrap-up
 - [ ] Claude Desktop config snippet (macOS + Windows).

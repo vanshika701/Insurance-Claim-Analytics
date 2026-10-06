@@ -1,0 +1,142 @@
+[
+  {
+    "id": 1,
+    "question": "When do the IRDAI Insurance Fraud Monitoring Framework Guidelines, 2025 come into force?",
+    "expected_file": "irdai_fraud_monitoring_guidelines_2025.pdf",
+    "expected_page": 1,
+    "answer_hint": "1st April, 2026 (clause 1.3)"
+  },
+  {
+    "id": 2,
+    "question": "What is the reference number and date of the IRDAI Insurance Fraud Monitoring Framework Guidelines, 2025?",
+    "expected_file": "irdai_fraud_monitoring_guidelines_2025.pdf",
+    "expected_page": 1,
+    "answer_hint": "Ref: IRDAI/IID/GDL/MISC/112/10/2025, dated 09.10.2025"
+  },
+  {
+    "id": 3,
+    "question": "What does a Red Flag Indicator (RFI) mean under the IRDAI fraud guidelines?",
+    "expected_file": "irdai_fraud_monitoring_guidelines_2025.pdf",
+    "expected_page": 2,
+    "answer_hint": "A possible warning sign pointing to potential fraud that may require further investigation (clause 3.2)"
+  },
+  {
+    "id": 4,
+    "question": "How does IRDAI define Policyholder Fraud and/or Claims Fraud?",
+    "expected_file": "irdai_fraud_monitoring_guidelines_2025.pdf",
+    "expected_page": 3,
+    "answer_hint": "Fraud involving any person(s) in obtaining coverage or payment during purchase, servicing, or claim of a policy (clause 4.1.3)"
+  },
+  {
+    "id": 5,
+    "question": "Which committee is responsible for effective implementation and oversight of an insurer's fraud risk management framework?",
+    "expected_file": "irdai_fraud_monitoring_guidelines_2025.pdf",
+    "expected_page": 3,
+    "answer_hint": "The Risk Management Committee (RMC), clause 5.2"
+  },
+  {
+    "id": 6,
+    "question": "How often must an insurer review its Board approved Anti-Fraud Policy?",
+    "expected_file": "irdai_fraud_monitoring_guidelines_2025.pdf",
+    "expected_page": 3,
+    "answer_hint": "Regularly, at least annually (clause 5.3.1)"
+  },
+  {
+    "id": 7,
+    "question": "What due diligence must an insurer's Anti-Fraud Policy cover regarding staff and vendors?",
+    "expected_file": "irdai_fraud_monitoring_guidelines_2025.pdf",
+    "expected_page": 4,
+    "answer_hint": "Due diligence procedures for staff recruitment and vendor engagement (clause 5.3.1(g))"
+  },
+  {
+    "id": 8,
+    "question": "What two bodies must every insurer establish under the IRDAI fraud risk management framework besides the RMC?",
+    "expected_file": "irdai_fraud_monitoring_guidelines_2025.pdf",
+    "expected_page": 4,
+    "answer_hint": "A Fraud Monitoring Committee (FMC) and a Fraud Monitoring Unit (FMU), clause 5.3.2.1"
+  },
+  {
+    "id": 9,
+    "question": "Who must head the Fraud Monitoring Committee (FMC) at an insurer?",
+    "expected_file": "irdai_fraud_monitoring_guidelines_2025.pdf",
+    "expected_page": 4,
+    "answer_hint": "A KMP (Key Managerial Person), clause 5.3.2.2(a)"
+  },
+  {
+    "id": 10,
+    "question": "What annual assessment must the Fraud Monitoring Committee conduct to identify fraud vulnerabilities?",
+    "expected_file": "irdai_fraud_monitoring_guidelines_2025.pdf",
+    "expected_page": 5,
+    "answer_hint": "An Annual Comprehensive Fraud Risk Assessment, clause 5.3.2.3(e)"
+  },
+  {
+    "id": 11,
+    "question": "How often must the Fraud Monitoring Committee report to the Risk Management Committee?",
+    "expected_file": "irdai_fraud_monitoring_guidelines_2025.pdf",
+    "expected_page": 5,
+    "answer_hint": "Quarterly reports, clause 5.3.2.4(a)"
+  },
+  {
+    "id": 12,
+    "question": "Which body facilitates industry-wide fraud threat intelligence sharing among Indian insurers?",
+    "expected_file": "irdai_fraud_monitoring_guidelines_2025.pdf",
+    "expected_page": 7,
+    "answer_hint": "The Insurance Information Bureau (IIB), clause 7.2"
+  },
+  {
+    "id": 13,
+    "question": "Within how many days of the close of the financial year must insurers file their annual fraud monitoring return (FMR-1) with IRDAI?",
+    "expected_file": "irdai_fraud_monitoring_guidelines_2025.pdf",
+    "expected_page": 9,
+    "answer_hint": "Within 30 days, clause 12.2"
+  },
+  {
+    "id": 14,
+    "question": "What must the written SIU investigation procedures require regarding analysis of a claim file?",
+    "expected_file": "ca_doi_siu_annual_report_sample.pdf",
+    "expected_page": 6,
+    "answer_hint": "A thorough analysis of a claim file, application, or insurance transaction, plus witness interviews, industry-recognized databases, preservation of evidence, and a written investigation summary (CCR Title 10 §2698.36)"
+  },
+  {
+    "id": 15,
+    "question": "What quality control process must an insurer have for integral anti-fraud personnel referring suspected fraud to the SIU?",
+    "expected_file": "ca_doi_siu_annual_report_sample.pdf",
+    "expected_page": 9,
+    "answer_hint": "A process ensuring integral anti-fraud personnel properly identify suspected fraud and refer it to the SIU, with an intermediate management review step before submission"
+  },
+  {
+    "id": 16,
+    "question": "What must an insurer upload to document its 2023 SIU organizational structure?",
+    "expected_file": "ca_doi_siu_annual_report_sample.pdf",
+    "expected_page": 10,
+    "answer_hint": "A copy of the 2023 SIU organizational chart, including names and titles of personnel (CCR Title 10 §2698.40(b)(6))"
+  },
+  {
+    "id": 17,
+    "question": "What does 'integral anti-fraud personnel' include under California SIU regulations?",
+    "expected_file": "ca_doi_siu_annual_report_sample.pdf",
+    "expected_page": 13,
+    "answer_hint": "Claims handlers, underwriters, policy handlers, call center staff in claims/policy functions, legal staff, and similar roles -- but not staff directly assigned to the SIU (CCR Title 10 §2698.30(k))"
+  },
+  {
+    "id": 18,
+    "question": "Within how many days of commencing duties must new hires receive anti-fraud orientation training?",
+    "expected_file": "ca_doi_siu_annual_report_sample.pdf",
+    "expected_page": 15,
+    "answer_hint": "Within 90 days of commencing assigned duties (CCR Title 10 §2698.39(c)(1))"
+  },
+  {
+    "id": 19,
+    "question": "What California statute covers Qui Tam (whistleblower) civil actions for insurance fraud?",
+    "expected_file": "ca_doi_siu_annual_report_sample.pdf",
+    "expected_page": 4,
+    "answer_hint": "California Insurance Code §1871.7(e)(1)"
+  },
+  {
+    "id": 20,
+    "question": "What criteria must a TPA's or MGA's written fraud-referral procedure compare an insurance transaction against?",
+    "expected_file": "ca_doi_siu_annual_report_sample.pdf",
+    "expected_page": 21,
+    "answer_hint": "Patterns or trends of possible fraud, red flags, events/circumstances on the claim, and behavior/history of the submitter (CCR Title 10 §2698.35)"
+  }
+]

@@ -502,3 +502,81 @@ actually a property I'd verified) with "a comment can't hide a second statement"
 and already covered by the single-statement count). I rewrote the test to check the
 property that actually matters -- that the executed SQL, reparsed, is still exactly one
 SELECT -- and corrected the same wrong claim in two other places it had been written down.
+
+---
+
+## Phase 6 — Evaluation
+
+**What was built:** `eval/questions.json` (20 questions, each hand-written while reading
+the actual PDF pages, each with an exact `{file, page}` answer and a human-readable
+`answer_hint`) and `eval/run_eval.py`, which connects to the MCP server as a real client
+over stdio and (a) calls `search_guidelines` for every question to compute hit@5/MRR for
+the hybrid method through the actual protocol, (b) calls `rag/retrieve.py`'s BM25-only and
+vector-only functions directly for the method comparison (they aren't separately exposed
+as MCP tools -- only hybrid is, by design), and (c) runs an end-to-end check calling every
+other tool (`get_schema`, a valid `run_query`, an injection attempt, `score_claim`) through
+that same client session.
+
+**Real results:**
+
+| Method | hit@5 | MRR |
+|---|---|---|
+| BM25-only | **1.00** | **0.892** |
+| Vector-only | 0.85 | 0.708 |
+| Hybrid (direct call) | 0.95 | 0.811 |
+| Hybrid (via real MCP client) | 0.95 | 0.811 |
+
+The hybrid-via-MCP-client number matches the hybrid-direct number exactly, which is the
+useful sanity check: the protocol layer isn't silently changing the results.
+
+**The honest finding, stated plainly rather than massaged:** BM25-only outperformed
+hybrid on this question set. Looking at which questions each method missed: vector-only
+missed 3 (two not even in the top 10, one at rank 6), hybrid recovered 2 of those 3, so
+hybrid is a real improvement *over vector-only* -- but it still landed below pure BM25
+(hit@5 0.95 vs 1.00). The most likely explanation is a property of how the eval set was
+built, not of hybrid search in general: I wrote these 20 questions *while reading the
+source pages*, which means many of them echo the guideline's own vocabulary ("Risk
+Management Committee," "integral anti-fraud personnel," "Qui Tam") rather than paraphrasing
+it. That's precisely the condition where lexical search (BM25) has the advantage and
+where semantic search's actual selling point -- robustness to paraphrase -- never gets
+tested. I'm reporting this as a limitation of a small, hand-authored, source-vocabulary-
+biased question set, not reframing it to make hybrid look like the winner it was supposed
+to be. A fairer eval set would include questions phrased by someone who hadn't read the
+source text, which would be a reasonable next step, not something I did here.
+
+**Why each choice was made:**
+- **The retrieval-vs-ground-truth evaluation goes through a real MCP client, not just a
+  library call**, specifically for the method that's actually shipped as a tool
+  (`search_guidelines` = hybrid). This is the brief's own point: the same server has to
+  serve both a human in Claude Desktop and an automated evaluator, so the evaluator should
+  exercise the real protocol, not a shortcut around it.
+- **BM25-only and vector-only are evaluated by direct function call, not as separate MCP
+  tools**, because they aren't separate tools -- exposing 3 near-duplicate search tools to
+  an LLM would be worse tool design than exposing 1 (hybrid) and keeping the comparison in
+  the eval harness where it belongs.
+- **Top-10 retrieved for ranking, hit@5 as the pass/fail bar.** Retrieving 10 lets MRR
+  distinguish "missed by one slot" (rank 6, as vector-only did on question 16) from "not
+  found at all" (ranks beyond 10 all scored as a 0 contribution to MRR), which a strict
+  top-5-only retrieval would collapse into the same "miss."
+
+### Likely interview questions
+
+**Q: Your own numbers show hybrid search losing to BM25-only. Doesn't that undercut your
+Phase 3 argument for hybrid?**
+A: No -- it's a property of my 20-question eval set, and I'm not hiding that. I wrote
+these questions while reading the source PDFs, so a lot of them reuse the document's exact
+phrasing, which is the one scenario where lexical search has no disadvantage and semantic
+search's actual advantage (handling paraphrase) never comes into play. What the numbers do
+show is that hybrid is a real improvement over vector-only (0.95 vs 0.85 hit@5) -- it
+recovered two of vector-only's three misses. I'd want a larger eval set written by someone
+who didn't read the source text before trusting a verdict between hybrid and BM25-only in
+general; what I have here is an honest result on a small, source-vocabulary-biased set,
+not a refutation of the Phase 3 reasoning.
+
+**Q: Why evaluate through the MCP protocol instead of just calling your Python functions?**
+A: Because the tool that actually ships is `search_guidelines` called over MCP, and a
+library-level test can pass while something in the protocol layer -- serialization, the
+tool's own `k` parameter handling, error formatting -- is subtly broken. Running the same
+20 questions through a real stdio client and confirming the numbers match the direct-call
+numbers exactly is what lets me say the protocol layer isn't losing or distorting
+anything, instead of just assuming it.
