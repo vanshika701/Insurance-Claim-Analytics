@@ -1,0 +1,15 @@
+# Dependencies for the AI Claims Investigator Copilot extension (MCP server, ML model,
+# RAG). Separate from the original project's requirements.txt — install with:
+#   pip install -r requirements-copilot.txt
+# (The original analysis's requirements.txt is untouched.)
+
+mcp==2.3.0
+sqlglot==30.21.0
+xgboost==3.4.1
+shap==0.52.0
+chromadb==1.5.9
+sentence-transformers==6.1.0
+rank-bm25==0.2.2
+pypdf==6.19.0
+pytest==9.1.1
+torch==2.14.1

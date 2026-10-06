@@ -29,3 +29,21 @@ data/claims.csv
 *.nbconvert.ipynb
 
 # Charts are committed intentionally (recruiter-facing); do not ignore charts/
+
+# --- AI Claims Investigator Copilot extension ---
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Regenerable SQLite fallback DB (built by copilot/build_sqlite.py from data/*.csv)
+data/claims.db
+data/claims.sqlite
+
+# Regenerable ChromaDB vector store (built by rag/build_index.py from docs/guidelines/)
+docs/guidelines/chroma/
+rag/chroma/
+
+# Downloaded guideline PDFs can be large; re-fetched by rag/fetch_guidelines.py.
+# Small reference PDFs ARE tracked (see docs/guidelines/README.md) unless this
+# grows — if so, scope this pattern down to the specific large files.
+
