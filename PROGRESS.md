@@ -89,8 +89,28 @@ Legend: `[x]` done & verified by running code · `[~]` partially done / blocked 
 **Blockers:** none (NAIC PDFs are an optional nice-to-have, not required).
 
 ## Phase 4 — MCP server
-- [ ] `mcp_server/server.py` using the SDK's `MCPServer` (the current name for `FastMCP`) exposing
-      `get_schema`, `run_query` (guarded read-only SQL), `score_claim`, `search_guidelines`.
+- [x] `mcp_server/server.py` using the SDK's `MCPServer` (imported as `FastMCP`) exposing
+      `get_schema`, `run_query`, `score_claim`, `search_guidelines`, with clear tool
+      docstrings for LLM use.
+- [x] `mcp_server/sql_guard.py` — AST-based guard (sqlglot): single statement only,
+      SELECT/UNION/INTERSECT/EXCEPT root only, forbidden-function walk, LIMIT<=100
+      enforced, executes the AST's regenerated SQL (not the caller's raw text), 5s
+      wall-clock timeout. **Verified: 20/20 adversarial + legitimate test cases behaved
+      as expected** (injection via `;`, comment-trick, UPDATE/DELETE/DROP/ATTACH/PRAGMA,
+      LOAD_FILE/SLEEP, oversized LIMIT — all blocked; plain SELECT, LIMIT, UNION, CTE,
+      inline comment — all allowed).
+- [x] **Found and fixed a real segfault**: XGBoost+SHAP and sentence-transformers/torch
+      crash (SIGSEGV) when both execute native code in the same process (use-order, not
+      import-order — confirmed by bisection; `KMP_DUPLICATE_LIB_OK=TRUE` did NOT fix it).
+      Fixed by isolating `score_claim` in a subprocess. Documented in detail in
+      docs/INTERVIEW_NOTES.md Phase 4 as the hardest bug of the build.
+- [x] Verified end-to-end: all 4 tools called directly as functions in one process
+      (including score_claim run after search_guidelines had already loaded torch — the
+      exact scenario that used to crash), AND a real MCP client connecting over stdio to
+      the server as a subprocess, `list_tools()` returning all 4, `call_tool("get_schema")`
+      returning a correct result.
+
+**Blockers:** none.
 
 ## Phase 5 — Tests
 - [ ] `tests/` pytest suite: SQL guardrails (incl. injection/bypass attempts), model

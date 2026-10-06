@@ -10,7 +10,7 @@ Required talking points this file must cover (tracked here as they're answered):
 - [x] Chunking strategy — Phase 3.
 - [x] Embedding model choice — Phase 3.
 - [x] Why hybrid search — Phase 3.
-- [ ] How SQL injection/abuse is prevented — Phase 4.
+- [x] How SQL injection/abuse is prevented — Phase 4.
 - [x] Dual-backend (MySQL/SQLite) data access layer — Phase 1.
 
 ---
@@ -338,3 +338,112 @@ general neighborhood of meaning. Vector search in turn wins on paraphrased or co
 questions. Combining them with Reciprocal Rank Fusion gets both without having to
 normalize two incomparable score scales -- and I didn't just assert hybrid is better, I
 measured it against each method alone in Phase 6.
+
+---
+
+## Phase 4 — MCP server
+
+**What was built:** `mcp_server/server.py` exposes 4 tools -- `get_schema`, `run_query`,
+`score_claim`, `search_guidelines` -- over the SDK's `MCPServer` class (imported as
+`FastMCP`; see Phase 0). `mcp_server/sql_guard.py` is the guardrail layer `run_query`
+calls before touching the database. Verified two ways: every tool called directly as a
+plain Python function, and then for real -- a genuine MCP client connecting to the server
+over stdio as a subprocess, listing tools, and calling one, exactly the way Claude Desktop
+or the Phase 6 eval harness will.
+
+### How SQL injection/abuse is prevented (`mcp_server/sql_guard.py`)
+
+Not keyword-blocklisting the input text -- that's easy to evade (comments, case, spacing).
+Every check operates on the **parsed AST** (via `sqlglot`), so what matters is what the
+SQL actually *is*, not how it's spelled:
+1. **Exactly one statement.** `sqlglot.parse()` splits on `;`; if it returns anything
+   other than exactly one statement, reject -- including `"SELECT 1; -- ; DROP TABLE x"`,
+   where the trailing text is a harmless comment but still counts as a second (empty)
+   statement.
+2. **Root node type must be read-only** (`Select`, or `Union`/`Intersect`/`Except` of
+   selects). `INSERT`/`UPDATE`/`DELETE`/`DROP`/`ALTER`/`CREATE`/`ATTACH`/`PRAGMA`/... are
+   rejected by their AST type, which can't be disguised by formatting.
+3. **No call to a function on a danger list** (`LOAD_FILE`, `SLEEP`, `BENCHMARK`,
+   `GET_LOCK`, ...), found by walking the whole parsed tree -- so one hidden inside a
+   subquery or a UNION branch is still caught, not just one at the top level.
+4. **A LIMIT is enforced**: present and over 100 → rejected with a clear message; absent →
+   100 is appended.
+5. **The executed SQL is the AST's own regenerated string, not the caller's raw text.**
+   This is the detail that makes the other four checks robust rather than best-effort:
+   regenerating from the parsed tree strips comments and any textual noise that didn't
+   survive parsing as meaningful SQL. What runs against the database is what the parser
+   understood the query to mean, not whatever bytes the caller actually sent.
+
+Tested against 20 cases (`mcp_server/sql_guard.py` was run standalone against a battery
+including `; DROP TABLE`, `UPDATE`, `DELETE`, `ATTACH DATABASE`, `PRAGMA`,
+`LOAD_FILE(...)`, an oversized `LIMIT`, and several legitimate queries including a CTE and
+a `UNION`) -- all 20 behaved as expected, formalized as pytest cases in Phase 5.
+
+A 5-second wall-clock timeout wraps query execution (`with_timeout`, a thread pool). Honest
+limitation, stated in the code comment: Python can't forcibly kill a thread mid-syscall, so
+a query that ignores the timeout signal could keep running in the background after the
+tool call returns an error. Acceptable for a demo-scale, row-capped, read-only guard; a
+production deployment would want a database-side statement timeout as well (MySQL's
+`MAX_EXECUTION_TIME` hint, SQLite's `.setexeccontrolhandler` / step-count interrupt).
+
+### The segfault (genuinely the hardest bug of this whole build)
+
+Calling `score_claim` (XGBoost + SHAP) through the MCP server crashed the Python process
+with no traceback -- just exit code 139 (SIGSEGV). It did **not** reproduce by calling
+`copilot.score.score_claim()` standalone, which made it confusing: the model code itself
+was fine. Bisection (documented in commit history, reproduced in isolation with a series of
+`python -c` one-liners) found the actual trigger: loading `sentence-transformers` (which
+pulls in `torch`) and then running XGBoost's prediction + SHAP's `TreeExplainer` **in the
+same process** crashes once both have actually executed native code -- import order alone
+didn't matter, only use order, which is what made it so easy to miss: `score_claim` and
+`search_guidelines` each worked perfectly on their own, and even together in one order, but
+not the other. On macOS this class of bug is a known failure mode when two libraries each
+bundle/initialize their own OpenMP or BLAS runtime (`KMP_DUPLICATE_LIB_OK=TRUE` did **not**
+fix it here, which was itself useful information -- it ruled out the simplest version of
+that explanation).
+
+**Fix:** isolate the XGBoost/SHAP scoring call in its own subprocess
+(`subprocess.run([sys.executable, "-m", "copilot.score", str(claim_id)], ...)`,
+`copilot/score.py` already supported this as a CLI entry point from Phase 2). This
+sidesteps the conflict regardless of its exact root cause, at the cost of ~3 seconds of
+process-startup overhead per `score_claim` call (measured) -- an acceptable trade for a
+tool that an investigator calls per-claim, not in a tight loop. Verified fixed by running
+all 4 tools, including `score_claim` after `search_guidelines` has already loaded torch,
+in a single process with no crash.
+
+**Why this is worth leading with in an interview:** it's a real debugging story with a
+measured, reproduced root cause (use-order, not import-order -- a genuinely non-obvious
+distinction), a ruled-out hypothesis (the `KMP_DUPLICATE_LIB_OK` fix that didn't work), and
+a defensible, simple fix (process isolation) chosen over a fragile one (trying to force a
+specific import/use order and hoping it holds as the code evolves).
+
+### Likely interview questions
+
+**Q: How do you stop an LLM from running a destructive query through run_query?**
+A: The guard doesn't try to pattern-match dangerous SQL text -- it parses the query into
+an AST with `sqlglot` and checks the AST's actual structure: exactly one statement, and
+that statement's root must be a `Select` (or a set operation over selects). An `UPDATE` or
+`DROP` is rejected because of what it *is* in the parse tree, which can't be hidden by
+comments, casing, or whitespace the way a text-matching filter could be evaded. I also walk
+the full tree for a short list of dangerous function calls (`LOAD_FILE`, `SLEEP`, ...) so
+one hidden in a subquery is still caught, and I execute the AST's own regenerated SQL
+string rather than the caller's original text, which strips out anything that parsed as a
+comment or didn't survive as meaningful SQL.
+
+**Q: What's the hardest bug you hit building this?**
+A: A silent segfault calling the fraud model's scoring tool through the MCP server, with
+no Python traceback at all -- just exit code 139. It didn't reproduce calling the model
+code directly, only through the server, which made it look like an MCP problem at first.
+Bisecting with a series of minimal repro scripts showed it was actually XGBoost+SHAP and
+sentence-transformers/torch conflicting once *both* had run native code in the same
+process -- and only in one particular order, which is why it looked intermittent at first
+glance. I fixed it by isolating the model-scoring call in a subprocess rather than chasing
+an import-order fix that would've been fragile against future changes.
+
+**Q: Why return `{"ok": false, "error": "..."}` from run_query instead of raising an
+exception?**
+A: Because the caller here is an LLM, not a human reading a stack trace. An uncaught
+exception either crashes the tool call or surfaces as an opaque error the model can't act
+on. Returning a structured result with a plain-English reason lets the calling model read
+"LIMIT 99999 exceeds the maximum of 100 rows" and retry with a corrected query in the same
+conversation turn, instead of getting stuck.
