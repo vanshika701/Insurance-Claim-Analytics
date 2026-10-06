@@ -170,15 +170,44 @@ Legend: `[x]` done & verified by running code · `[~]` partially done / blocked 
 **Blockers:** none.
 
 ## Phase 7 — Demo, docs, wrap-up
-- [ ] Claude Desktop config snippet (macOS + Windows).
-- [ ] `docs/DEMO_SCRIPT.md` — 3 demo prompts.
-- [ ] `README.md` — new Copilot section (Mermaid architecture diagram, setup, real results),
-      existing analysis content left intact.
-- [ ] `docs/RESUME_BULLETS.md` — bullets built only from `results/` numbers.
-- [ ] Final PROGRESS.md update + final chat summary.
+- [x] `docs/DEMO_SCRIPT.md` — 3 demo prompts (per-claim investigation, weekly triage,
+      regulatory lookup) + the Claude Desktop config snippet for macOS and Windows
+      (verified the venv's python path, `cwd`-based module resolution works because
+      `copilot/config.py` resolves `PROJECT_ROOT` from `__file__`, not cwd).
+- [x] `README.md` — new "AI Claims Investigator Copilot" section added (Mermaid
+      architecture diagram, setup commands, real results tables cross-checked against
+      `results/model_metrics.json` and `results/retrieval_metrics.json`, limitations,
+      extension layout). Existing analysis content above it is untouched.
+- [x] `docs/RESUME_BULLETS.md` — 4 bullets, every number traced to a source
+      (`results/*.json`, test counts, query/tool counts) in a table in that file.
+- [x] Final PROGRESS.md update (this) + final chat summary sent.
+
+**Blockers:** none. **All 7 phases complete.**
 
 ---
 
 ## Running log of chat updates
 
 (Appended after each phase, newest last.)
+
+- Phase 0+1: repo audited, MySQL confirmed reachable, MCP SDK v2 rename (FastMCP→MCPServer)
+  caught before writing server code, dual-backend data access layer built and verified
+  identical on MySQL/SQLite, 2 known defects detected and reported.
+- Phase 2: 5-fold CV fraud model (logistic + XGBoost) honestly does not beat the "flag all
+  Major Damage" baseline (F1 0.585-0.591 vs 0.637); caught a real dataset leak
+  (`insured_hobbies`) via a sensitivity check and excluded it from the deployed model;
+  SHAP wired up globally and per-claim.
+- Phase 3: RAG built on 2 real public guideline PDFs (NAIC blocked by Cloudflare,
+  documented as optional); page-bounded chunking, local embeddings, hybrid BM25+vector+RRF
+  retrieval verified with real citations.
+- Phase 4: MCP server with 4 tools shipped; AST-based SQL guard verified against 19
+  adversarial cases; found and fixed a real SIGSEGV (XGBoost/SHAP vs torch in one process)
+  via subprocess isolation -- the hardest bug of the build.
+- Phase 5: 47/47 pytest tests pass together, including the segfault-prone combination
+  side by side; caught and corrected an inaccurate claim in a test and in two docs while
+  writing it.
+- Phase 6: real MCP-client evaluation -- BM25-only actually beat hybrid on the 20-question
+  set (honestly reported, with the likely reason: source-vocabulary-biased questions);
+  full tool end-to-end check passed.
+- Phase 7: demo script, Claude Desktop config, README Copilot section, and resume bullets
+  shipped, all built only from real measured numbers. Build complete.

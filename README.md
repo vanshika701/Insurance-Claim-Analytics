@@ -232,6 +232,129 @@ Makefile                    make setup / db / load / queries / analyze / model /
 
 ---
 
+## AI Claims Investigator Copilot
+
+An extension on top of the analysis above (nothing in the sections before this one was
+changed): an MCP server that lets Claude investigate claims through four tools — safe
+read-only SQL, a SHAP-explained fraud-risk model, and hybrid RAG search over real
+insurance-fraud regulatory guidelines — plus a from-scratch evaluation of all of it.
+
+Full build log, every design decision and why, and interview-ready answers:
+[`PROGRESS.md`](PROGRESS.md) (phase-by-phase checklist with real numbers) and
+[`docs/INTERVIEW_NOTES.md`](docs/INTERVIEW_NOTES.md) (the full write-up — including a real
+cross-library segfault that got diagnosed and fixed, and a dataset leak caught before it
+reached the model).
+
+### Architecture
+
+```mermaid
+flowchart LR
+    Client["Claude Desktop /<br/>eval/run_eval.py"] -- "MCP · stdio" --> Server["mcp_server/server.py<br/>(4 tools)"]
+
+    Server --> Guard["sql_guard.py<br/>(sqlglot AST checks)"]
+    Guard --> DB[("MySQL / SQLite<br/>copilot/db.py")]
+
+    Server -- "subprocess<br/>(isolates XGBoost/SHAP<br/>from torch -- see notes)" --> Scorer["copilot/score.py"]
+    Scorer --> Model[("xgboost_pipeline.joblib<br/>5-fold CV'd vs baseline")]
+
+    Server --> Rag["rag/retrieve.py<br/>BM25 + vector + RRF"]
+    Rag --> Chroma[("ChromaDB<br/>all-MiniLM-L6-v2")]
+    Rag --> Bm25[("BM25<br/>(rebuilt from Chroma)")]
+    Chroma --> Pdfs["docs/guidelines/*.pdf<br/>(IRDAI, CA DOI)"]
+```
+
+### Real results
+
+**Fraud model** (`results/model_metrics.json`, stratified 5-fold CV) — **the model does
+not beat the simple rule**, reported as measured:
+
+| Model | Precision | Recall | F1 | ROC-AUC |
+|---|---|---|---|---|
+| Baseline — flag all Major Damage | 0.608 ± 0.048 | 0.676 ± 0.074 | **0.637 ± 0.041** | 0.766 ± 0.032 |
+| Logistic regression | 0.525 ± 0.053 | 0.680 ± 0.045 | 0.591 ± 0.041 | 0.762 ± 0.028 |
+| XGBoost | 0.558 ± 0.025 | 0.619 ± 0.059 | 0.585 ± 0.029 | 0.755 ± 0.036 |
+
+A feature sensitivity check caught a dataset leak before it could inflate these numbers:
+adding `insured_hobbies` back in (not deployed) pushes logistic regression's ROC-AUC from
+0.762 to **0.864** and XGBoost's from 0.755 to **0.860** — `chess` and `cross-fit` predict
+fraud at 75–83%, which has no real-world mechanism and is a known artifact of this public
+dataset. Excluded from the model that's actually shipped.
+
+**Retrieval** (`results/retrieval_metrics.json`, 20 citation-grounded questions, hit@5 /
+MRR, measured via a real MCP client over stdio):
+
+| Method | hit@5 | MRR |
+|---|---|---|
+| BM25-only | **1.00** | **0.892** |
+| Vector-only | 0.85 | 0.708 |
+| Hybrid (deployed) | 0.95 | 0.811 |
+
+BM25 actually wins here — the honest reason is in `docs/INTERVIEW_NOTES.md` Phase 6 (the
+eval questions were written from the source text, which favors lexical matching). Hybrid
+still beats vector-only, which is the comparison that matters for a system that has to
+handle paraphrased questions too, not just vocabulary-matched ones.
+
+**Tests:** 47/47 passing (`pytest tests/ -q`), including 19 SQL-injection/bypass attempts
+all correctly blocked and one full MCP-protocol stdio integration test.
+
+### Setup
+
+```bash
+pip install -r requirements-copilot.txt          # separate from requirements.txt
+
+# database (reuses the MySQL setup above, or run fully without MySQL):
+DB_BACKEND=sqlite python -m copilot.build_sqlite  # builds data/claims.db from data/*.csv
+
+# train the fraud model (writes models/ + results/model_metrics.json)
+python -m copilot.train_model
+
+# build the guideline search index (writes docs/guidelines/chroma/)
+python -m rag.build_index
+
+# sanity checks
+python -m pytest tests/ -q
+python -m eval.run_eval                           # writes results/retrieval_metrics.json
+
+# run the MCP server directly, or point Claude Desktop at it (see docs/DEMO_SCRIPT.md)
+python -m mcp_server.server
+```
+
+`DB_BACKEND` defaults to `mysql` (reusing the database set up earlier in this README);
+set it to `sqlite` to run the whole Copilot layer with zero MySQL setup.
+
+### Limitations
+
+- Same curated, 1,000-row, 24.7%-fraud dataset as the rest of this project — see
+  "Dataset" above. Every model/retrieval number here is a relative finding on that
+  dataset, not a production-ready metric.
+- The fraud model does not beat the one-line severity rule (reported honestly above) —
+  its value is the SHAP explanation per claim, not superior accuracy.
+- The RAG corpus is 2 real documents / 64 chunks. It demonstrates the pipeline correctly
+  end-to-end; it is not a comprehensive regulatory knowledge base.
+- The 20-question eval set was hand-written from the source PDFs, which biases it toward
+  lexical (BM25-friendly) phrasing — see the Phase 6 write-up for what a fairer eval would
+  need.
+- `run_query`'s timeout can't forcibly kill a misbehaving database call mid-syscall (a
+  Python limitation, not swept under the rug) — acceptable for a demo-scale, row-capped,
+  read-only tool; a production deployment would add a database-side statement timeout too.
+
+### Extension layout
+
+```
+copilot/            config, dual-backend DB access, data validation, features, model
+                     training/scoring (XGBoost + SHAP vs the baseline rule)
+rag/                 PDF parsing, chunking, embeddings, ChromaDB index, hybrid retrieval
+mcp_server/          the MCP server (4 tools) + the AST-based SQL guard
+tests/               47 pytest tests across all of the above
+eval/                20 hand-verified questions + the MCP-client evaluation harness
+docs/guidelines/     the 2 real source PDFs + the persistent Chroma index (gitignored)
+docs/INTERVIEW_NOTES.md, docs/DEMO_SCRIPT.md, docs/RESUME_BULLETS.md
+models/, results/    the trained model artifact + every metrics JSON referenced above
+PROGRESS.md          phase-by-phase build log
+```
+
+---
+
 ## Attribution
 
 Dataset: **"Auto Insurance Claims Data"** by **Bunty Shah** on Kaggle —
