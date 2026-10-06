@@ -369,10 +369,13 @@ SQL actually *is*, not how it's spelled:
 4. **A LIMIT is enforced**: present and over 100 → rejected with a clear message; absent →
    100 is appended.
 5. **The executed SQL is the AST's own regenerated string, not the caller's raw text.**
-   This is the detail that makes the other four checks robust rather than best-effort:
-   regenerating from the parsed tree strips comments and any textual noise that didn't
-   survive parsing as meaningful SQL. What runs against the database is what the parser
-   understood the query to mean, not whatever bytes the caller actually sent.
+   This is checked, not just asserted: `tests/test_sql_guard.py` reparses the guard's
+   output and confirms it's still exactly one `SELECT`. It does **not** strip harmless
+   comments -- sqlglot legitimately keeps those attached to the nodes they annotate, and
+   an inert comment by itself isn't a threat. The thing a comment *could* defeat --
+   hiding a second statement after it, e.g. `"SELECT 1; -- ; DROP TABLE x"` -- is caught
+   earlier, by the single-statement check (step 1), which counts statements, not
+   characters.
 
 Tested against 20 cases (`mcp_server/sql_guard.py` was run standalone against a battery
 including `; DROP TABLE`, `UPDATE`, `DELETE`, `ATTACH DATABASE`, `PRAGMA`,
@@ -427,8 +430,9 @@ that statement's root must be a `Select` (or a set operation over selects). An `
 comments, casing, or whitespace the way a text-matching filter could be evaded. I also walk
 the full tree for a short list of dangerous function calls (`LOAD_FILE`, `SLEEP`, ...) so
 one hidden in a subquery is still caught, and I execute the AST's own regenerated SQL
-string rather than the caller's original text, which strips out anything that parsed as a
-comment or didn't survive as meaningful SQL.
+string rather than the caller's original text -- tested by reparsing that output and
+confirming it's still exactly one SELECT, so the guard's own output can't smuggle
+anything past itself.
 
 **Q: What's the hardest bug you hit building this?**
 A: A silent segfault calling the fraud model's scoring tool through the MCP server, with
@@ -447,3 +451,54 @@ exception either crashes the tool call or surfaces as an opaque error the model 
 on. Returning a structured result with a plain-English reason lets the calling model read
 "LIMIT 99999 exceeds the maximum of 100 rows" and retry with a corrected query in the same
 conversation turn, instead of getting stuck.
+
+---
+
+## Phase 5 — Tests
+
+**What was built:** `tests/test_sql_guard.py` (19 cases), `tests/test_model.py`,
+`tests/test_retrieval.py`, `tests/test_mcp_tools.py` (including one real stdio
+client-server integration test). **47/47 pass**, run together in a single `pytest`
+session.
+
+**The one design choice worth explaining:** `test_model.py` never imports
+`copilot.score` directly -- it shells out to `python -m copilot.score <id>`, the same
+subprocess path `mcp_server/server.py`'s `score_claim` tool uses. That's deliberate: the
+whole point of the Phase 4 segfault fix was removing XGBoost/SHAP from any process that
+also loads sentence-transformers/torch, and importing `copilot.score` directly in a test
+module that runs in the *same pytest session* as `test_retrieval.py` (which does load
+torch) would silently reopen exactly that risk depending on which pytest version or
+plugin changes file collection order in the future. Routing through the subprocess in the
+test, not just in production code, means the test suite can never resurrect a bug its own
+existence is supposed to prevent.
+
+**A mistake caught while writing tests, worth stating plainly rather than quietly
+fixing:** an early version of a guard test asserted that executing the AST's regenerated
+SQL "strips comments" from the query. It doesn't -- `sqlglot` legitimately keeps harmless
+comments attached to the nodes they annotate, and the test failed, correctly, the first
+time it ran. The actual security property worth testing was different: that the SQL
+which gets executed, reparsed, is still exactly one `SELECT` -- i.e. the guard's own
+output can't smuggle anything past itself. Fixed the test, and fixed the same incorrect
+claim in `sql_guard.py`'s docstring and in the Phase 4 notes above.
+
+### Likely interview questions
+
+**Q: Why does `test_model.py` run the scorer via subprocess instead of importing it?**
+A: Because the bug that fix exists for (the XGBoost/SHAP + torch segfault) is a
+same-process, both-used problem, not an import-order problem. If the test imported
+`copilot.score` directly, it would *currently* pass — but it would be sitting next to
+`test_retrieval.py` in the same pytest session with no guarantee which runs first, and a
+future pytest version, plugin, or `-p no:randomly`-style ordering change could silently
+flip that and bring the segfault back with no code change at all. Testing through the
+same subprocess boundary production code uses removes that risk entirely rather than
+hoping test collection order stays favorable.
+
+**Q: Tell me about a mistake you caught while building this.**
+A: While writing the SQL guard tests, I asserted that regenerating SQL from the parsed
+AST strips comments out, as a defense-in-depth property. The test failed immediately --
+`sqlglot` keeps comments attached to their nodes on purpose, which is correct behavior,
+not a bug. I'd conflated two different things: "comments are inert" (true, and not
+actually a property I'd verified) with "a comment can't hide a second statement" (true,
+and already covered by the single-statement count). I rewrote the test to check the
+property that actually matters -- that the executed SQL, reparsed, is still exactly one
+SELECT -- and corrected the same wrong claim in two other places it had been written down.

@@ -18,10 +18,13 @@ Rules enforced, in order:
      oversized LIMIT is rejected with a clear message rather than silently clamped, so the
      caller knows their request was capped); if it has none, MAX_ROWS is appended.
   6. **The query that actually gets executed is sqlglot's regenerated SQL from the parsed
-     AST, not the caller's raw text.** This is deliberate defense in depth: regenerating
-     from the AST strips comments and any textual obfuscation that didn't survive parsing
-     as meaningful SQL -- what gets executed is what the parser understood, not what the
-     caller typed.
+     AST, not the caller's raw text.** This is deliberate defense in depth: what gets
+     executed is the parser's own, guaranteed-reparseable rendering of exactly the single
+     statement it validated (checked in tests/test_sql_guard.py by reparsing the guard's
+     output and confirming it's still exactly one SELECT) -- not whatever raw bytes the
+     caller sent. It does NOT strip harmless comments (sqlglot legitimately keeps those
+     attached to nodes); the protection a comment could actually defeat -- hiding a second
+     statement after it -- is caught earlier, by the single-statement check.
 
 `run_query` in mcp_server/server.py also wraps execution in a wall-clock timeout (see
 `with_timeout` below) and returns guard failures as a normal (non-crashing) tool result so

@@ -113,8 +113,31 @@ Legend: `[x]` done & verified by running code · `[~]` partially done / blocked 
 **Blockers:** none.
 
 ## Phase 5 — Tests
-- [ ] `tests/` pytest suite: SQL guardrails (incl. injection/bypass attempts), model
-      loading/scoring, retrieval citations, each MCP tool. All passing.
+- [x] `tests/test_sql_guard.py` — 19 cases (13 block, 6 allow) covering stacked statements,
+      comment-hidden statements, every blocked DDL/DML type, ATTACH, PRAGMA, forbidden
+      functions (incl. hidden in a UNION branch / subquery), oversized LIMIT, empty/garbage
+      input, plus legitimate SELECT/LIMIT/UNION/CTE/join/comment cases, plus a reparse
+      check that the guard's own executed output is still exactly one SELECT.
+- [x] `tests/test_model.py` — artifacts exist, config shape, the "baseline not beaten"
+      finding is pinned (fails loudly if a future change silently claims otherwise),
+      scoring a known + missing claim via the same subprocess path the MCP server uses.
+- [x] `tests/test_retrieval.py` — BM25/vector/hybrid all return valid {file,page}
+      citations against real tracked PDFs; hybrid results are a subset of the union of
+      its two inputs; k is respected.
+- [x] `tests/test_mcp_tools.py` — all 4 tools called directly, plus **one real MCP
+      client-over-stdio integration test** (server launched as a subprocess, `list_tools`,
+      `call_tool`) -- the same protocol path Phase 6 and Claude Desktop use.
+- [x] **47/47 tests pass**, run together in one pytest session (`pytest tests/ -q`) --
+      including the model (XGBoost/SHAP, subprocess-isolated) and retrieval
+      (sentence-transformers/torch, in-process) tests side by side, the exact combination
+      that used to segfault before the Phase 4 fix.
+- [x] Caught and fixed one incorrect claim during test-writing: a test asserted the SQL
+      guard "strips comments" from the executed query; it doesn't (sqlglot legitimately
+      preserves harmless comments) — fixed the test to check the property that actually
+      matters (the executed SQL reparses as exactly one SELECT) and corrected the same
+      incorrect claim in `sql_guard.py`'s docstring and `docs/INTERVIEW_NOTES.md`.
+
+**Blockers:** none.
 
 ## Phase 6 — Evaluation
 - [ ] `eval/questions.json` — 20 real questions grounded in the actual guideline documents.
