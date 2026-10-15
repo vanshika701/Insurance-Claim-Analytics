@@ -256,3 +256,56 @@ Four extras beyond the brief to make the repo interview-ready.
 
 **Next step**
 - Project complete. Nothing outstanding.
+
+---
+
+## 2026-09-06 — Added SQL_STUDY_LIST.md
+
+**What we are building**
+A tick-box study checklist of every SQL concept (Tier 2 → Tier 4) needed to fully read the
+10 queries: `CASE WHEN`, the boolean-as-1/0 trick, conditional aggregation, ratio-of-sums,
+date functions, the three subquery kinds, `CROSS JOIN`, `HAVING` floors, the window-function
+family (`OVER`, `PARTITION BY`, `RANK`/`DENSE_RANK`/`NTILE`/`PERCENT_RANK`/`LAG`, running
+totals, empty-`OVER()` global aggregates, aggregate-nested-in-window), CTEs and CTE
+stacking, logical query evaluation order, and the schema. Each item has a minimal example
+and the query it appears in, plus a suggested learning order and a practice method.
+
+**Next step**
+- Project complete. Nothing outstanding.
+
+---
+
+## 2026-09-05 — Added PROJECT_GUIDE.md (learn-from-zero walkthrough)
+
+**What we are building**
+A single long-form document that explains the entire project from no prior knowledge, so it
+can be fully understood and defended in an interview.
+
+**Done this step**
+- `PROJECT_GUIDE.md` — 20 sections: 30-second pitch, why the project exists, insurance/fraud
+  jargon, dataset + column dictionary, the pipeline diagram, normalization explained in
+  plain terms, the schema, the load step, **all 10 SQL queries walked through** (business
+  question → technique → result → takeaway), the notebook charts, the z-score method
+  (what a z-score is, what we did, why it failed), the ML models (what logistic
+  regression / decision trees are, features, train/test, metrics defined, results), the
+  F1–F9 findings in plain English, the tying-it-together narrative, a SQL glossary, a
+  file-by-file map, run instructions, a **cross-question bank** with strong answers, and a
+  known-weaknesses list.
+
+**Insights found**
+- Writing the "one story" section crystallised the narrative arc: ask the obvious questions
+  → they come back flat → severity jumps out → within severity, money doesn't differ →
+  therefore fraud is in the classification, not the invoice → models can't beat the
+  one-liner → ship the one-liner.
+
+**Difficulties faced**
+- None. Cross-checked every number in the guide against ANALYSIS.md, the query outputs, and
+  the fraud_model.py run.
+
+**Decisions made**
+- Kept it as one file rather than splitting — it's meant to be read start-to-finish once.
+- Explicitly flagged the weak points (label leakage, tiny/curated data, confounding, 1:1
+  relationships, mediocre AUC) so they're rehearsed, not surprises.
+
+**Next step**
+- Project complete. Nothing outstanding.
